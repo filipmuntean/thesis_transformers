@@ -158,12 +158,16 @@ def load_toy(n=50_000, char=True, seed=0, name='lang'):
 
 (x_train, y_train), (x_val, y_val), (i2w, w2i), numcls = load_imdb(final=False)
 
-print([i2w[w] for w in x_train[100]])
+# print([i2w[w] for w in x_train[180]])
 
-# words = sorted(list(set(i2w)), key=len)
-# vocab_size = len(words)
-# print(words)
-# print(vocab_size)
+sorted_reviews = sorted(x_train, key = lambda x: sum(len(i2w[w]) for w in x))
+
+for i in sorted_reviews:
+    print([i2w[idx] for idx in i]) 
+
+
+
+
 
 
 
