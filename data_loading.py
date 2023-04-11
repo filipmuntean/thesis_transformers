@@ -38,7 +38,7 @@ def batch_reviews_by_tokens(x_train, seq_len):
 #     print([data_rnn.i2w[idx] for idx in i]) 
 
 
-def batch_reviews_by_instance_and_by_tokens(x_train, i2w, batch_size, seq_len):
+def batch_reviews_by_instance_and_by_tokens(x_train, batch_size, seq_len):
     batches = []
     for i in range(0, len(x_train), batch_size):
         batch = x_train[i:i+batch_size]
@@ -58,18 +58,18 @@ def batch_reviews_by_instance_and_by_tokens(x_train, i2w, batch_size, seq_len):
             else:
             #     print("First 5 of the batch:\n")
             #     print(batch_words[:5], "\n")
-                batches.append(batch_words)
+                # batches.append(batch_words)
                 batch_words = seq_words
                 batch_token_count = seq_token_count
         
-        # # Print the final batch if it's not empty
+        # Print the final batch if it's not empty
             if batch_words:
                 batches.append(batch_words)
     return batches
 
-batched_sorted_reviews = batch_reviews_by_instance_and_by_tokens(sorted_reviews, data_rnn.i2w, BATCH_SIZE, SEQUENCE_LENGTH)
+batched_sorted_reviews = batch_reviews_by_instance_and_by_tokens(sorted_reviews, BATCH_SIZE, SEQUENCE_LENGTH)
 
-# print(batched_sorted_reviews[:5])
+print(batched_sorted_reviews[:10])
 max_len = max(len(review) for review in [batched_sorted_reviews])
 
 def pad_sequence():
@@ -85,8 +85,7 @@ def pad_sequence():
         padded_seqs.append(padded_seq)
     return padded_seqs
 
-padded_sequence = pad_sequence()
-
+# padded_sequence = pad_sequence()
 
 
 
