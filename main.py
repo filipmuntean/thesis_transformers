@@ -17,11 +17,9 @@ class Main():
 
     # Pad reviews manually with 0's
     padded_reviews = util.loading.get_padded_sequence(batched_sorted_reviews)
-    # print(padded_reviews[0][:10])
+    
     # Build tensors
     padded_tensors = util.loading.get_tensor(padded_reviews)
-
-    print(padded_tensors)
 
 main = Main()
 

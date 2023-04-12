@@ -76,8 +76,11 @@ def get_padded_sequence(sequences):
 
 def get_tensor(padded_sequence):
     for batch in padded_sequence:
-        for seq in batch: 
-            padded_tensor = torch.tensor(seq, dtype = torch.long)
+        # for seq in batch: 
+        padded_tensor = torch.tensor(batch, dtype = torch.long)
+            # padded_tensor = torch.tensor(seq, dtype = torch.long)
+        # print the size of the tensor just to be sure 
+        print(padded_tensor.size())
     return padded_tensor
 
 ## TODO use fire module
