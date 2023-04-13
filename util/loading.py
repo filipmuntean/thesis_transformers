@@ -14,19 +14,36 @@ def sort_reviews(i2w, x_train, y_train):
     sorted_x_train, sorted_y_train = zip(*sorted_reviews)
     return sorted_x_train, sorted_y_train
 # Batch the reviews by instance
-def batch_sequences_by_instance(sequence, batch_size, y_train): #y_train
-    batches, sentiments = []
+
+    # sentiment_labels = y_train[i:i + batch_size]
+
+    #     for seq in sentiment_labels:
+    #         sentiments.append(sentiment_labels)
+
+    #         #y_train
+
+def batch_sequences_by_instance(sequence, y_train, batch_size): 
+    batches = []
+    sentiments = []
     for i in range(0, len(sequence), batch_size):
         batch = sequence[i:i + batch_size]
-        sentiment_labels = y_train[i:i + batch_size]
+    
         batch_words = [] 
         for seq in batch:
         #    words = [i2w[idx] for idx in seq]
             batch_words.append(seq)
         batches.append(batch_words)
-        sentiment_labels.append(sentiments)
 
-    return batches, sentiment_labels
+    for i in range(0, len(y_train), batch_size):
+        sentiment_labels = y_train[i:i + batch_size]
+
+        sentiment_to_words = []
+
+        for seq in sentiment_labels:
+            sentiment_to_words.append([seq])
+        sentiments.append([sentiment_labels])
+
+    return batches, sentiments
 
 def batch_sequences_by_tokens(sequence, batch_size, seq_len): 
     # Sort the data by the total number of tokens
@@ -61,11 +78,12 @@ def get_max(sorted_sequence):
     # max_len = max(map(len, sorted_sequence))
     return max_len
 
-def get_padded_sequence(sequences): #y_train
+def get_padded_sequence_and_labels(sequences, labels): #y_train
     seq = []
     
     for batch in sequences:
         max_batch = get_max(batch)
+        padded_batch = []
         for seq in batch:
             if max_batch is None:
                 max_batch = get_max(sequences)
@@ -75,23 +93,32 @@ def get_padded_sequence(sequences): #y_train
 
             # Pad sequence to max length with zeros
             seq += [0] * (max_batch - len(seq))
-            
-    return sequences
 
-def get_tensor(padded_sequence):
-    for batch in padded_sequence:
+    for sentiment in labels:
+        max_sentiment = get_max(sentiment)
+        for seq in sentiment:
+
+            if max_sentiment is None:
+                max_sentiment = get_max(labels)
+
+            if len(seq) > max_sentiment:
+                seq = seq[:max_sentiment]
+
+            # Pad sequence to max length with zeros
+            seq += ([0] * (max_sentiment - len(seq)),)
+
+    return sequences, labels
+
+def get_review_tensor(padded_reviews):
+    for batch in padded_reviews:
         # for seq in batch: 
         padded_tensor = torch.tensor(batch, dtype = torch.long)
             # padded_tensor = torch.tensor(seq, dtype = torch.long)
         # print the size of the tensor just to be sure 
-
-    # for sentiment in y_train:
-    #     for seq in sentiment:
-    #         sentiment_tensor = torch.tensor(sentiment, dtype = torch.long)
     return padded_tensor
 
 def get_sentiment_tensor(y_train):
-    sentiment_tensor = torch.tensor(y_train, dtype = torch.long)
+    sentiment_tensor = torch.tensor(y_train, dtype = torch.int)
     return sentiment_tensor
 
 ## TODO use fire module
