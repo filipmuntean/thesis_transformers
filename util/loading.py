@@ -13,14 +13,6 @@ def sort_reviews(i2w, x_train, y_train):
     sorted_reviews = sorted(zip(x_train, y_train), key=lambda pair: sum(len(i2w[w]) for w in pair[0]))
     sorted_x_train, sorted_y_train = zip(*sorted_reviews)
     return sorted_x_train, sorted_y_train
-# Batch the reviews by instance
-
-    # sentiment_labels = y_train[i:i + batch_size]
-
-    #     for seq in sentiment_labels:
-    #         sentiments.append(sentiment_labels)
-
-    #         #y_train
 
 def batch_sequences_by_instance(sequence, y_train, batch_size): 
     batches = []
@@ -114,11 +106,10 @@ def get_review_tensor(padded_reviews):
         # for seq in batch: 
         padded_tensor = torch.tensor(batch, dtype = torch.long)
             # padded_tensor = torch.tensor(seq, dtype = torch.long)
-        # print the size of the tensor just to be sure 
     return padded_tensor
 
 def get_sentiment_tensor(y_train):
-    sentiment_tensor = torch.tensor(y_train, dtype = torch.int)
+    sentiment_tensor = torch.tensor(y_train, dtype = torch.long)
     return sentiment_tensor
 
 ## TODO use fire module
