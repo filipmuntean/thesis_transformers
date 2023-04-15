@@ -7,10 +7,11 @@ import torch.optim as optim
 from main import train_dataset, i2w
 import time
 
-RUNS = 3
+RUNS = 21
+VOCAB_SIZE = len(i2w)
 
 class GlobalPoolingClassifier(nn.Module):
-    def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type='max'):
+    def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type='avg'):
         super(GlobalPoolingClassifier, self).__init__()
 
         self.embed_dim = embed_dim
@@ -32,9 +33,8 @@ class GlobalPoolingClassifier(nn.Module):
         return x
     
 # unq = padded_tensors.unique(return_counts=True)
-vocab_size = len(i2w)
 
-net = GlobalPoolingClassifier(vocab_size, pool_type='avg')
+net = GlobalPoolingClassifier(VOCAB_SIZE, pool_type='avg')
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
@@ -78,6 +78,7 @@ for epoch in range(RUNS):  # loop over the dataset multiple times
     end_time = time.time()
     total_time = end_time - start_time
     print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+    print("============================================") 
     print(f'Total run time: {total_time:.2f} seconds')
 
 
