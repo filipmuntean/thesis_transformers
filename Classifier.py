@@ -4,68 +4,82 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torch.optim as optim
+from main import train_dataset, i2w
+import time
 
-import util
+RUNS = 3
 
-class Net(nn.Module):
-    def __init__(self):
-        super().__init__()
+class GlobalPoolingClassifier(nn.Module):
+    def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type='max'):
+        super(GlobalPoolingClassifier, self).__init__()
 
-        self.conv1 = nn.Conv1d(32, 2514, 5)
-        self.pool = nn.MaxPool1d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+        self.vocab_size = vocab_size
 
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.pooling = pool_type 
+        self.linear = nn.Linear(embed_dim, output_dim, bias=True)
+        
+    def forward(self, x): 
+        x = self.embedding(x) # embedded: (batch_size, seq_len, embedding_dim)
+        if self.pooling == 'max':
+            x = torch.max(x, dim=1)[0]
+        elif self.pooling == 'avg':
+            x = torch.mean(x, dim=1)
+        else:
+            raise ValueError("Pooling must be set to 'max' or 'avg'")
         return x
+    
+# unq = padded_tensors.unique(return_counts=True)
+vocab_size = len(i2w)
 
-net = Net()
+net = GlobalPoolingClassifier(vocab_size, pool_type='avg')
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.Adam(net.parameters(), lr=0.001)
 
-for epoch in range(2):  # loop over the dataset multiple times
+start_time = time.time()
+
+for epoch in range(RUNS):  # loop over the dataset multiple times
 
     running_loss = 0.0
-    for i in enumerate(padded_tensors, 0):
+    running_accuracy = 0.0
 
-        # zero the parameter gradients
+    total_steps = len(train_dataset)
+
+    for (inputs, labels) in train_dataset:
+        # Zero the gradients
         optimizer.zero_grad()
 
-        # forward + backward + optimize
-        outputs = net(padded_tensors)
-        loss = criterion(outputs, sentiment_tensors)
+        # Forward pass
+        outputs = net(inputs)
+        labels = labels.view(-1)
+        # labels = labels.squeeze(dim=1)
+        loss = criterion(outputs, labels)
+
+        # Backward pass and optimize
         loss.backward()
         optimizer.step()
+    
+        # Compute accuracy
+        _, predicted = torch.max(outputs.data, 1)
+        batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+        running_accuracy += batch_accuracy
 
-        # print statistics
         running_loss += loss.item()
-        if i % 32 == 31:    # print every 2000 mini-batches
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 32:.3f}')
-            running_loss = 0.0
 
+        # if (i+1) % 1 == 0:
+        #     print(f'Epoch [{epoch+1}/{RUNS}], Step [{i+1}/{total_steps}], Loss: {loss.item():.4f}, Accuracy: {batch_accuracy:.4f}')
 
-print('Finished Training')
+    epoch_loss = running_loss / len(train_dataset)
+    epoch_accuracy = running_accuracy / len(train_dataset) * 100
 
-dataiter = iter(x_val)
-images, labels = next(dataiter)
-
-
-
-
-
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+    print(f'Total run time: {total_time:.2f} seconds')
 
 
 
-
-
-
-
+    

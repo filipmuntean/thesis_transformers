@@ -72,10 +72,8 @@ def get_max(sorted_sequence):
 
 def get_padded_sequence_and_labels(sequences, labels): #y_train
     seq = []
-    
     for batch in sequences:
         max_batch = get_max(batch)
-        padded_batch = []
         for seq in batch:
             if max_batch is None:
                 max_batch = get_max(sequences)
@@ -102,15 +100,40 @@ def get_padded_sequence_and_labels(sequences, labels): #y_train
     return sequences, labels
 
 def get_review_tensor(padded_reviews):
-    for batch in padded_reviews:
-        # for seq in batch: 
-        padded_tensor = torch.tensor(batch, dtype = torch.long)
-            # padded_tensor = torch.tensor(seq, dtype = torch.long)
-    return padded_tensor
+    review_list_tensor = []
+    for seq in padded_reviews:
+        tensor_batch = torch.tensor(seq, dtype = torch.long)
+        review_list_tensor.append(tensor_batch)
+    return review_list_tensor
 
 def get_sentiment_tensor(y_train):
-    sentiment_tensor = torch.tensor(y_train, dtype = torch.long)
-    return sentiment_tensor
+    sentiment_tensors = []
+    for sentiment in y_train:
+        sentiment_tensor = torch.tensor(sentiment, dtype = torch.long)
+        sentiment_tensors.append(sentiment_tensor)
+    return sentiment_tensors
+
+def get_train_review_tensor(x_val):
+    train_review_list_tensor = []
+    for review in x_val:
+        review_tensor = torch.tensor(review, dtype = torch.long)
+        train_review_list_tensor.append(review_tensor)
+    return train_review_list_tensor
+
+def get_train_sentiment(y_val):
+    # sentiment_tensor = torch.tensor(y_train, dtype = torch.long)
+    train_sentiment_list_tensor = []
+    for sentiment in y_val: 
+        sentiment_tensor = torch.tensor(sentiment, dtype = torch.long)
+        train_sentiment_list_tensor.append(sentiment_tensor)
+    return train_sentiment_list_tensor
+
+def append_lists(review_list, sentiment_list):
+    result = []
+    for i in range(len(review_list)):
+        result.append([review_list[i], sentiment_list[i]])
+    
+    return result
 
 ## TODO use fire module
 
