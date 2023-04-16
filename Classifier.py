@@ -31,8 +31,6 @@ class GlobalPoolingClassifier(nn.Module):
         else:
             raise ValueError("Pooling must be set to 'max' or 'avg'")
         return x
-    
-# unq = padded_tensors.unique(return_counts=True)
 
 net = GlobalPoolingClassifier(VOCAB_SIZE, pool_type='avg')
 
@@ -55,7 +53,6 @@ for epoch in range(RUNS):  # loop over the dataset multiple times
         # Forward pass
         outputs = net(inputs)
         labels = labels.view(-1)
-        # labels = labels.squeeze(dim=1)
         loss = criterion(outputs, labels)
 
         # Backward pass and optimize
@@ -69,17 +66,14 @@ for epoch in range(RUNS):  # loop over the dataset multiple times
 
         running_loss += loss.item()
 
-        # if (i+1) % 1 == 0:
-        #     print(f'Epoch [{epoch+1}/{RUNS}], Step [{i+1}/{total_steps}], Loss: {loss.item():.4f}, Accuracy: {batch_accuracy:.4f}')
-
     epoch_loss = running_loss / len(train_dataset)
     epoch_accuracy = running_accuracy / len(train_dataset) * 100
 
     end_time = time.time()
-    total_time = end_time - start_time
+    total_time = (end_time - start_time) / 60
     print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
     print("============================================") 
-    print(f'Total run time: {total_time:.2f} seconds')
+    print(f'Total run time: {total_time:.2f} minutes\n')
 
 
 
