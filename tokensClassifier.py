@@ -1,12 +1,11 @@
 import torch
-import torchvision
 import torch.nn as nn
 import torch.optim as optim
-from main import Main
+from tokens import Tokens
 import time
 
-RUNS = 21
-VOCAB_SIZE = len(Main.i2w)
+RUNS = 3
+VOCAB_SIZE = len(Tokens.i2w_tokens)
 
 class GlobalPoolingClassifier(nn.Module):
     def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type='avg'):
@@ -44,15 +43,15 @@ def trainClassifier():
 
         running_loss = 0.0
         running_accuracy = 0.0
-        for (inputs, labels) in Main.train_dataset:
+        for (inputs, labels) in Tokens.train_dataset_by_tokens:
             # Zero the gradients
             optimizer.zero_grad()
-
             # Forward pass
             outputs = net(inputs)
             labels = labels.view(-1)
+            print(outputs.shape, labels.shape)
             loss = criterion(outputs, labels)
-
+            
             # Backward pass and optimize
             loss.backward()
             optimizer.step()
@@ -64,8 +63,8 @@ def trainClassifier():
 
             running_loss += loss.item()
 
-        epoch_loss = running_loss / len(Main.train_dataset)
-        epoch_accuracy = running_accuracy / len(Main.train_dataset) * 100
+        epoch_loss = running_loss / len(Tokens.train_dataset_by_tokens)
+        epoch_accuracy = running_accuracy / len(Tokens.train_dataset_by_tokens) * 100
 
         end_time = time.time()
         total_time_seconds = end_time - start_time
