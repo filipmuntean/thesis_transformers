@@ -72,7 +72,7 @@ def batch_sequences_by_tokens(sequence, y_train, batch_size, seq_len):
                 current_batch_tokens += sentiment
             else:
                 # final_batch_sent.append(current_batch_sentiments)
-                current_batch_sentiments = [sentiment]
+                current_batch_sentiments = sentiment
                 current_batch_tokens = sentiment
 
         if current_batch_sentiments:

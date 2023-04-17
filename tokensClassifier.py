@@ -4,7 +4,7 @@ import torch.optim as optim
 from tokens import Tokens
 import time
 
-RUNS = 3
+RUNS = 21
 VOCAB_SIZE = len(Tokens.i2w_tokens)
 
 class GlobalPoolingClassifier(nn.Module):
@@ -46,10 +46,16 @@ def trainClassifier():
         for (inputs, labels) in Tokens.train_dataset_by_tokens:
             # Zero the gradients
             optimizer.zero_grad()
+
             # Forward pass
             outputs = net(inputs)
-            labels = labels.view(-1)
-            print(outputs.shape, labels.shape)
+            labels = labels.squeeze()
+            if outputs.size(0) != labels.size(0):
+                # Pad the smaller batch to match the size of the larger batch
+                if outputs.size(0) < labels.size(0):
+                    outputs = nn.functional.pad(outputs, (0, 0, 0, labels.size(0) - outputs.size(0)))
+                else:
+                    labels = nn.functional.pad(labels, (0, outputs.size(0) - labels.size(0)))
             loss = criterion(outputs, labels)
             
             # Backward pass and optimize

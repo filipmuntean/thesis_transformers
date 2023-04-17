@@ -51,6 +51,7 @@ def trainClassifier():
             # Forward pass
             outputs = net(inputs)
             labels = labels.view(-1)
+            print(outputs.shape, labels.shape)
             loss = criterion(outputs, labels)
 
             # Backward pass and optimize
