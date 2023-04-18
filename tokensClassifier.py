@@ -4,7 +4,7 @@ import torch.optim as optim
 from tokens import Tokens
 import time
 
-RUNS = 21
+RUNS = 15
 VOCAB_SIZE = len(Tokens.i2w_tokens)
 
 class GlobalPoolingClassifier(nn.Module):
@@ -50,6 +50,7 @@ def trainClassifier():
             # Forward pass
             outputs = net(inputs)
             labels = labels.squeeze()
+            # print(outputs.shape, "\n", labels.shape)
             if outputs.size(0) != labels.size(0):
                 # Pad the smaller batch to match the size of the larger batch
                 if outputs.size(0) < labels.size(0):
@@ -80,3 +81,28 @@ def trainClassifier():
         print(f'Total run time: {int(minutes)}:{int(seconds)}')
 
 trainClassifier()
+
+def testClassifier():
+    running_loss = 0.0
+    running_accuracy = 0.0
+    net.eval() # switch to evaluation mode
+
+    with torch.no_grad(): # turn off gradient computation
+        for (inputs, labels) in Tokens.test_dataset_by_tokens:
+            # Forward pass
+            outputs = net(inputs)
+            if labels.dim() == 0:
+                labels = labels.unsqueeze(0)
+            loss = criterion(outputs, labels)
+
+            # Compute accuracy
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.size(0)
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+    test_loss = running_loss / len( Tokens.test_dataset_by_tokens)
+    test_accuracy = running_accuracy / len(Tokens.test_dataset_by_tokens) * 100
+
+    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')

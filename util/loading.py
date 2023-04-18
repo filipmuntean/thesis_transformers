@@ -5,8 +5,7 @@ BATCH_SIZE = 32
 SEQUENCE_LENGTH = 10
 
 # Sort the reviews
-# def sort_reviews(i2w, x_train): #  y_train
-#     return sorted(x_train, key = lambda x: sum(len(i2w[w]) for w in x))
+
 def sort_reviews(i2w, x_train, y_train):
     sorted_reviews = sorted(zip(x_train, y_train), key=lambda pair: sum(len(i2w[w]) for w in pair[0]))
     sorted_x_train, sorted_y_train = zip(*sorted_reviews)
@@ -38,6 +37,7 @@ def get_max(sorted_sequence):
     
 def get_padded_sequences_and_labels(sequences, labels): #y_train
     seq = []
+
     for batch in sequences:
         max_batch = get_max(batch)
         for seq in batch:
@@ -59,7 +59,7 @@ def get_padded_sequences_and_labels(sequences, labels): #y_train
             if len(seq) > max_sentiment:
                 seq = seq[:max_sentiment]
 
-            # Pad sequence to max length with zeros
+            # Pad labels to max length with zeros
             seq += ([0] * (max_sentiment - len(seq)),)
 
     return sequences, labels

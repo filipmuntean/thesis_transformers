@@ -1,11 +1,10 @@
 import torch
-import torchvision
 import torch.nn as nn
 import torch.optim as optim
 from main import Main
 import time
 
-RUNS = 21
+RUNS = 3
 VOCAB_SIZE = len(Main.i2w)
 
 class GlobalPoolingClassifier(nn.Module):
@@ -51,7 +50,6 @@ def trainClassifier():
             # Forward pass
             outputs = net(inputs)
             labels = labels.view(-1)
-            print(outputs.shape, labels.shape)
             loss = criterion(outputs, labels)
 
             # Backward pass and optimize
@@ -71,8 +69,39 @@ def trainClassifier():
         end_time = time.time()
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
+
         print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
         print("======================================================") 
         print(f'Total run time: {int(minutes)}:{int(seconds)}')
-
+    
 trainClassifier()
+
+def testClassifier():
+    running_loss = 0.0
+    running_accuracy = 0.0
+
+    net.eval() 
+
+    with torch.no_grad(): 
+        for (inputs, labels) in Main.test_dataset:
+            # Forward pass
+            outputs = net(inputs)
+            labels = labels.squeeze()
+            print(f"Labels shape: {labels.shape}")
+            loss = criterion(outputs, labels)
+
+            # Compute accuracy
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+    test_loss = running_loss / len(Main.test_dataset)
+    test_accuracy = running_accuracy / len(Main.test_dataset) * 100
+
+    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
+
+testClassifier()
+
+
