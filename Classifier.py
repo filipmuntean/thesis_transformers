@@ -7,58 +7,58 @@ from main import Main
 import time
 import fire
 
-class SelfAttention(nn.module):
-    def __init__(self, k, heads = 4, mask = False):
+# class SelfAttention(nn.Module):
+#     def __init__(self, k, heads = 4, mask = False):
         
-        super().__init__()
+#         super().__init__()
 
-        assert k % heads == 0, "k must be divisible by heads"
+#         assert k % heads == 0, "k must be divisible by heads"
 
-        self.k, self.heads = k, heads
+#         self.k, self.heads = k, heads
 
-        self.tokeys = nn.Linear(k, k, bias = False)
-        self.toqueries = nn.Linear(k, k, bias = False)
-        self.tovalues = nn.Linear(k, k, bias = False)
+#         self.tokeys = nn.Linear(k, k, bias = False)
+#         self.toqueries = nn.Linear(k, k, bias = False)
+#         self.tovalues = nn.Linear(k, k, bias = False)
 
-        self.unifyheads = nn.Linear(k, k)
+#         self.unifyheads = nn.Linear(k, k)
 
-        self.mask = mask
+#         self.mask = mask
 
-    def forward(self, x):
-        B, T, K = x.size()
-        H = self.heads
+#     def forward(self, x):
+#         B, T, K = x.size()
+#         H = self.heads
 
-        keys = self.tokeys(x)
-        queries = self.toqueries(x)
-        values = self.tovalues(x)
+#         keys = self.tokeys(x)
+#         queries = self.toqueries(x)
+#         values = self.tovalues(x)
 
-        S = K // H
+#         S = K // H
 
-        keys = keys.view(B, T, H, S)
-        queries = queries.view(B, T, H, S)
-        values = values.view(B, T, H, S)
+#         keys = keys.view(B, T, H, S)
+#         queries = queries.view(B, T, H, S)
+#         values = values.view(B, T, H, S)
 
-        keys = keys.transpose(1, 2).contiguous().view(B * H, T, S)
-        queries = queries.transpose(1, 2).contiguous().view(B * H, T, S)
-        values = values.transpose(1, 2).contiguous().view(B * H, T, S)
+#         keys = keys.transpose(1, 2).contiguous().view(B * H, T, S)
+#         queries = queries.transpose(1, 2).contiguous().view(B * H, T, S)
+#         values = values.transpose(1, 2).contiguous().view(B * H, T, S)
 
-        dot = torch.bmm(queries, keys.transpose(1, 2))
+#         dot = torch.bmm(queries, keys.transpose(1, 2))
 
-        dot = dot / (K ** (1/2))
+#         dot = dot / (K ** (1/2))
 
-        if self.mask:
-            mask = torch.triu(torch.ones(T, T), diagonal = 1).bool()
-            mask = mask.unsqueeze(0).unsqueeze(0)
-            dot = dot.masked_fill(mask, -float('inf'))
+#         if self.mask:
+#             mask = torch.triu(torch.ones(T, T), diagonal = 1).bool()
+#             mask = mask.unsqueeze(0).unsqueeze(0)
+#             dot = dot.masked_fill(mask, -float('inf'))
 
-        dot = F.softmax(dot, dim = 2)
+#         dot = F.softmax(dot, dim = 2)
 
-        out = torch.bmm(dot, values).view(B, H, T, S)
-        out = out.transpose(1, 2).contiguous().view(B, T, S * H)
+#         out = torch.bmm(dot, values).view(B, H, T, S)
+#         out = out.transpose(1, 2).contiguous().view(B, T, S * H)
 
-        return self.unifyheads(out)
+#         return self.unifyheads(out)
 
-RUNS = 50
+RUNS = 3
 VOCAB_SIZE = len(Main.i2w)
 
 class Classifier(nn.Module):
@@ -72,13 +72,13 @@ class Classifier(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.pooling = pool_type 
         self.linear = nn.Linear(embed_dim, output_dim, bias=True)
-        self.self_attention = SelfAttention(output_dim)
+        # self.self_attention = SelfAttention(output_dim)
         
     def forward(self, x): 
         x = self.embedding(x) 
         x = self.linear(x)
-        x = self.self_attention(x)
-        
+        # x = self.self_attention(x)
+
         if self.pooling == 'max':
             x = torch.max(x, dim=1)[0]
         elif self.pooling == 'avg':
@@ -138,6 +138,7 @@ def testClassifier():
     with torch.no_grad(): 
         for (inputs, labels) in Main.test_dataset:
             outputs = net(inputs)
+            labels = labels.squeeze()
             loss = criterion(outputs, labels)
 
             _, predicted = torch.max(outputs.data, 1)
@@ -150,6 +151,8 @@ def testClassifier():
     test_accuracy = running_accuracy / len(Main.test_dataset) * 100
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
 
+trainClassifier()
+testClassifier()
 
 if __name__ == '__main__':
     fire.Fire()
