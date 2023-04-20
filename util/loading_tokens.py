@@ -25,6 +25,7 @@ def batch_sequences_by_tokens(sequence, y_train, batch_size, seq_len):
 
             if sequence_tokens > seq_len:
                 continue
+            
             if current_batch_tokens + sequence_tokens <= seq_len:
                 current_batch_sequences.append(seq)
                 current_batch_tokens += sequence_tokens
@@ -64,9 +65,6 @@ def get_padded_sequences_and_labels(sequences, labels): #y_train
         max_batch = get_max(batch)
 
         for seq in batch:
-            # if max_batch is None:
-            #     max_batch = get_max(batch)
-
             if len(seq) > max_batch:
                 seq = seq[:max_batch]
 
@@ -76,12 +74,9 @@ def get_padded_sequences_and_labels(sequences, labels): #y_train
     
     for sentiment in labels:
         max_sentiment = get_max(sentiment)
-        # if max_sentiment is None:
-        #     max_sentiment = get_max(sentiment)
 
         if len(sentiment) > max_sentiment:
             seq = seq[:max_sentiment]
-
         # Pad sequence to max length with zeros
         seq += ([0] * (max_sentiment - len(seq)))
     return sequences, labels

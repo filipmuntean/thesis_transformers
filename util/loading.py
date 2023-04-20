@@ -1,11 +1,6 @@
 import torch
 import torch.nn.utils.rnn as rnn_utils
 
-BATCH_SIZE = 32
-SEQUENCE_LENGTH = 10
-
-# Sort the reviews
-
 def sort_reviews(i2w, x_train, y_train):
     sorted_reviews = sorted(zip(x_train, y_train), key=lambda pair: sum(len(i2w[w]) for w in pair[0]))
     sorted_x_train, sorted_y_train = zip(*sorted_reviews)
@@ -16,16 +11,16 @@ def batch_sequences_by_instance(sequence, y_train, batch_size):
     sentiments = []
     for i in range(0, len(sequence), batch_size):
         batch = sequence[i:i + batch_size]
+    
         batch_words = [] 
-
         for seq in batch:
             batch_words.append(seq)
         batches.append(batch_words)
 
     for i in range(0, len(y_train), batch_size):
         sentiment_labels = y_train[i:i + batch_size]
-        sentiment_to_words = []
 
+        sentiment_to_words = []
         for seq in sentiment_labels:
             sentiment_to_words.append([seq])
         sentiments.append([sentiment_labels])
@@ -35,9 +30,9 @@ def batch_sequences_by_instance(sequence, y_train, batch_size):
 def get_max(sorted_sequence):
     return max(len(review) for review in sorted_sequence)
     
-def get_padded_sequences_and_labels(sequences, labels): #y_train
-    seq = []
+def get_padded_sequences_and_labels(sequences, labels): 
 
+    seq = []
     for batch in sequences:
         max_batch = get_max(batch)
         for seq in batch:
@@ -84,8 +79,3 @@ def append_lists(review_list, sentiment_list):
         result.append([review_list[i], sentiment_list[i]])
     return result
 
-## TODO use fire module
-
-## Simple self attention
-## Each of the outputs is a weighted vector of the input vectors
-## Sum of the square sequence lengths is a constant over the tokens

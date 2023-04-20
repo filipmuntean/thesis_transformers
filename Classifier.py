@@ -1,15 +1,69 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch import nn 
+import torch.nn.functional as F
 from main import Main
 import time
+import fire
 
-RUNS = 3
+class SelfAttention(nn.module):
+    def __init__(self, k, heads = 4, mask = False):
+        
+        super().__init__()
+
+        assert k % heads == 0, "k must be divisible by heads"
+
+        self.k, self.heads = k, heads
+
+        self.tokeys = nn.Linear(k, k, bias = False)
+        self.toqueries = nn.Linear(k, k, bias = False)
+        self.tovalues = nn.Linear(k, k, bias = False)
+
+        self.unifyheads = nn.Linear(k, k)
+
+        self.mask = mask
+
+    def forward(self, x):
+        B, T, K = x.size()
+        H = self.heads
+
+        keys = self.tokeys(x)
+        queries = self.toqueries(x)
+        values = self.tovalues(x)
+
+        S = K // H
+
+        keys = keys.view(B, T, H, S)
+        queries = queries.view(B, T, H, S)
+        values = values.view(B, T, H, S)
+
+        keys = keys.transpose(1, 2).contiguous().view(B * H, T, S)
+        queries = queries.transpose(1, 2).contiguous().view(B * H, T, S)
+        values = values.transpose(1, 2).contiguous().view(B * H, T, S)
+
+        dot = torch.bmm(queries, keys.transpose(1, 2))
+
+        dot = dot / (K ** (1/2))
+
+        if self.mask:
+            mask = torch.triu(torch.ones(T, T), diagonal = 1).bool()
+            mask = mask.unsqueeze(0).unsqueeze(0)
+            dot = dot.masked_fill(mask, -float('inf'))
+
+        dot = F.softmax(dot, dim = 2)
+
+        out = torch.bmm(dot, values).view(B, H, T, S)
+        out = out.transpose(1, 2).contiguous().view(B, T, S * H)
+
+        return self.unifyheads(out)
+
+RUNS = 50
 VOCAB_SIZE = len(Main.i2w)
 
-class GlobalPoolingClassifier(nn.Module):
-    def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type='avg'):
-        super(GlobalPoolingClassifier, self).__init__()
+class Classifier(nn.Module):
+    def __init__(self, vocab_size, output_dim = 2, embed_dim = 128, pool_type = 'avg'):
+        super(Classifier, self).__init__()
 
         self.embed_dim = embed_dim
         self.output_dim = output_dim
@@ -18,18 +72,22 @@ class GlobalPoolingClassifier(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.pooling = pool_type 
         self.linear = nn.Linear(embed_dim, output_dim, bias=True)
+        self.self_attention = SelfAttention(output_dim)
         
     def forward(self, x): 
-        x = self.embedding(x) # embedded: (batch_size, seq_len, embedding_dim)
+        x = self.embedding(x) 
+        x = self.linear(x)
+        x = self.self_attention(x)
+        
         if self.pooling == 'max':
             x = torch.max(x, dim=1)[0]
         elif self.pooling == 'avg':
             x = torch.mean(x, dim=1)
         else:
-            raise ValueError("Pooling must be set to 'max' or 'avg'")
+            print("Should be max or mean pooling\n")
         return x
 
-net = GlobalPoolingClassifier(VOCAB_SIZE, pool_type='avg')
+net = Classifier(VOCAB_SIZE, pool_type='avg')
 
 def optimization():
     return nn.CrossEntropyLoss(), optim.Adam(net.parameters(), lr=0.001)
@@ -44,19 +102,16 @@ def trainClassifier():
         running_loss = 0.0
         running_accuracy = 0.0
         for (inputs, labels) in Main.train_dataset:
-            # Zero the gradients
+
             optimizer.zero_grad()
 
-            # Forward pass
             outputs = net(inputs)
             labels = labels.view(-1)
             loss = criterion(outputs, labels)
 
-            # Backward pass and optimize
             loss.backward()
             optimizer.step()
         
-            # Compute accuracy
             _, predicted = torch.max(outputs.data, 1)
             batch_accuracy = (predicted == labels).sum().item() / labels.numel()
             running_accuracy += batch_accuracy
@@ -74,8 +129,6 @@ def trainClassifier():
         print("======================================================") 
         print(f'Total run time: {int(minutes)}:{int(seconds)}')
     
-trainClassifier()
-
 def testClassifier():
     running_loss = 0.0
     running_accuracy = 0.0
@@ -84,13 +137,9 @@ def testClassifier():
 
     with torch.no_grad(): 
         for (inputs, labels) in Main.test_dataset:
-            # Forward pass
             outputs = net(inputs)
-            labels = labels.squeeze()
-            print(f"Labels shape: {labels.shape}")
             loss = criterion(outputs, labels)
 
-            # Compute accuracy
             _, predicted = torch.max(outputs.data, 1)
             batch_accuracy = (predicted == labels).sum().item() / labels.numel()
             running_accuracy += batch_accuracy
@@ -99,9 +148,10 @@ def testClassifier():
 
     test_loss = running_loss / len(Main.test_dataset)
     test_accuracy = running_accuracy / len(Main.test_dataset) * 100
-
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
 
-testClassifier()
+
+if __name__ == '__main__':
+    fire.Fire()
 
 
