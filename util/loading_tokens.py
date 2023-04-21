@@ -67,9 +67,9 @@ def get_padded_sequences_and_labels(sequences, labels): #y_train
         for seq in batch:
             if len(seq) > max_batch:
                 seq = seq[:max_batch]
-
-            # Pad sequence to max length with zeros
-            seq += [0] * (max_batch - len(seq))
+            else:
+                # Pad sequence to max length with zeros
+                seq += [0] * (max_batch - len(seq))
 
     
     for sentiment in labels:
@@ -77,8 +77,9 @@ def get_padded_sequences_and_labels(sequences, labels): #y_train
 
         if len(sentiment) > max_sentiment:
             seq = seq[:max_sentiment]
-        # Pad sequence to max length with zeros
-        seq += ([0] * (max_sentiment - len(seq)))
+        else:
+            # Pad sequence to max length with zeros
+            seq += ([0] * (max_sentiment - len(seq)))
     return sequences, labels
 
 def get_review_tensor(padded_reviews):
