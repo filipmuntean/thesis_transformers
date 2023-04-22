@@ -1,0 +1,44 @@
+{
+    "os": "macOS-10.16-x86_64-i386-64bit",
+    "python": "3.9.7",
+    "heartbeatAt": "2023-04-21T14:28:19.597778",
+    "startedAt": "2023-04-21T14:28:19.039957",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--classifier=tokens"
+    ],
+    "state": "running",
+    "program": "/Users/filip/thesis/Classifier.py",
+    "codePath": "Classifier.py",
+    "git": {
+        "remote": "https://github.com/filipmuntean/thesis_transformers.git",
+        "commit": "c5b90e48f9fcbda0413d4ffb4ab1d3052485777b"
+    },
+    "email": "f.muntean@student.vu.nl",
+    "root": "/Users/filip/thesis",
+    "host": "MacBook-Pro-de-Filip.local",
+    "username": "filip",
+    "executable": "/Users/filip/opt/anaconda3/bin/python3",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 1400,
+        "min": 1400,
+        "max": 1400
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 1400,
+            "min": 1400,
+            "max": 1400
+        }
+    ],
+    "disk": {
+        "total": 233.46913528442383,
+        "used": 160.82605743408203
+    },
+    "memory": {
+        "total": 8.0
+    }
+}

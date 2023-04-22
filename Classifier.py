@@ -10,19 +10,22 @@ import fire
 import wandb
 import random
 
+RUNS = 1
+VOCAB_SIZE = len(Main.i2w)
+
 # start a new wandb run to track this script
-wandb.init(
-    # set the wandb project where this run will be logged
-    project="Movie Review Classification",
+# wandb.init(
+#     # set the wandb project where this run will be logged
+#     project="Movie Review Classification",
     
-    # track hyperparameters and run metadata
-    config={
-    "learning_rate": 0.001,
-    "architecture": "RNN",
-    "dataset": "CIFAR-100",
-    "epochs": 21,
-    }
-)
+#     # track hyperparameters and run metadata
+#     config={
+#     "learning_rate": 0.001,
+#     "architecture": "RNN",
+#     "dataset": "CIFAR-100",
+#     "epochs": 21,
+#     }
+# )
 
 class SelfAttention(nn.Module):
     def __init__(self, k, heads = 4, mask = False):
@@ -75,11 +78,8 @@ class SelfAttention(nn.Module):
 
         return self.unifyheads(out)
 
-RUNS = 10
-VOCAB_SIZE = len(Main.i2w)
-
 class Classifier(nn.Module):
-    def __init__(self, vocab_size, output_dim = 4, embed_dim = 128, pool_type = 'max'):
+    def __init__(self, vocab_size, output_dim = 4, embed_dim = 128, pool_type = 'avg'):
         super(Classifier, self).__init__()
 
         self.embed_dim = embed_dim
@@ -94,7 +94,7 @@ class Classifier(nn.Module):
     def forward(self, x): 
         x = self.embedding(x) 
         x = self.linear(x)
-        # x = self.self_attention(x)
+        x = self.self_attention(x)
 
         if self.pooling == 'max':
             x = torch.max(x, dim=1)[0]
@@ -187,6 +187,8 @@ def trainTokensClassifier():
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
 
+        # wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
+
         print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
         print("======================================================") 
         print(f'Total run time: {int(minutes)}:{int(seconds)}')
@@ -223,8 +225,15 @@ def testTokensClassifier():
         for (inputs, labels) in Tokens.test_dataset_by_tokens:
             # Forward pass
             outputs = net(inputs)
+            labels = labels.squeeze() #.squeeze()
             if labels.dim() == 0:
                 labels = labels.unsqueeze(0)
+            if outputs.size(0) != labels.size(0):
+                # Pad the smaller batch to match the size of the larger batch
+                if outputs.size(0) < labels.size(0):
+                    outputs = nn.functional.pad(outputs, (0, 0, 0, labels.size(0) - outputs.size(0)))
+                else:
+                    labels = nn.functional.pad(labels, (0, outputs.size(0) - labels.size(0)))
             loss = criterion(outputs, labels)
 
             # Compute accuracy
@@ -237,7 +246,8 @@ def testTokensClassifier():
     test_loss = running_loss / len( Tokens.test_dataset_by_tokens)
     test_accuracy = running_accuracy / len(Tokens.test_dataset_by_tokens) * 100
 
-    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
+    # wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
+    print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
     
 # trainInstancesClassifier()
 # testClassifier()
