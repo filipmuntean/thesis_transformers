@@ -10,26 +10,43 @@ import fire
 import wandb
 import random
 
-RUNS = 1
+RUNS = 3
 VOCAB_SIZE = len(Main.i2w)
 
 # start a new wandb run to track this script
-# wandb.init(
-#     # set the wandb project where this run will be logged
-#     project="Movie Review Classification",
+wandb.init(
+    # set the wandb project where this run will be logged
+    project="Movie Review Classification",
     
-#     # track hyperparameters and run metadata
-#     config={
-#     "learning_rate": 0.001,
-#     "architecture": "RNN",
-#     "dataset": "CIFAR-100",
-#     "epochs": 21,
-#     }
-# )
+    # track hyperparameters and run metadata
+    config={
+    "learning_rate": 0.001,
+    "architecture": "RNN",
+    "dataset": "CIFAR-100",
+    "epochs": 21,
+    }
+)
 
-class SelfAttention(nn.Module):
+class SimpleSelfAttention(nn.Module):
+    def __init__(self, b, t, k):
+        super().__init__()
+        self.b = b
+        self.t = t
+        self.k = k
+
+    def forward(self, x):
+        b, t, k = x.size()
+        # Compute raw weights
+        raw_weights = torch.bmm(x, x.transpose(1, 2))
+        # Apply row-wise softmax
+        weights = F.softmax(raw_weights, dim=2)
+        # Compute output sequence
+        y = torch.bmm(weights, x)
+        return y
+
+class MultiheadSelfAttention(nn.Module):
     def __init__(self, k, heads = 4, mask = False):
-        
+            
         super().__init__()
 
         assert k % heads == 0, "k must be divisible by heads"
@@ -51,6 +68,8 @@ class SelfAttention(nn.Module):
         keys = self.tokeys(x)
         queries = self.toqueries(x)
         values = self.tovalues(x)
+
+        # Use assert to check the shape of the tensors
 
         S = K // H
 
@@ -77,17 +96,23 @@ class SelfAttention(nn.Module):
         out = out.transpose(1, 2).contiguous().view(B, T, S * H)
 
         return self.unifyheads(out)
+    
+class TransformerBlock(nn.Module):
+    def __init__(self, embed_size, heads, dropout, forward_expansion):
+        super(TransformerBlock, self).__init__()
+        self.attention = MultiheadSelfAttention(embed_size, heads)
 
 class Classifier(nn.Module):
-    def __init__(self, vocab_size, output_dim = 4, embed_dim = 128, pool_type = 'avg'):
+    def __init__(self, vocab_size, pool_type = 'max', output_dim = 4, embed_dim = 128):
         super(Classifier, self).__init__()
 
+        self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.output_dim = output_dim
-        self.vocab_size = vocab_size
+        self.pool_type = pool_type 
 
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.pooling = pool_type 
+        
         self.linear = nn.Linear(embed_dim, output_dim, bias=True)
         self.self_attention = SelfAttention(output_dim)
         
@@ -96,17 +121,22 @@ class Classifier(nn.Module):
         x = self.linear(x)
         x = self.self_attention(x)
 
-        if self.pooling == 'max':
+        if self.pool_type == 'max':
             x = torch.max(x, dim=1)[0]
-        elif self.pooling == 'avg':
+        elif self.pool_type == 'avg':
             x = torch.mean(x, dim=1)
         else:
             print("Should be max or mean pooling\n")
         return x
 
-net = Classifier(VOCAB_SIZE, pool_type='avg')
+net = Classifier(VOCAB_SIZE, pool_type="max")
+
+# def runClassifier(pool_type):
+#     classifier = Classifier(VOCAB_SIZE, pool_type)
+#     return classifier
 
 def optimization():
+    # net = runClassifier(pool_type=any)
     return nn.CrossEntropyLoss(), optim.Adam(net.parameters(), lr=0.001)
 
 criterion, optimizer = optimization()
@@ -114,6 +144,7 @@ criterion, optimizer = optimization()
 start_time = time.time()
 
 def trainInstancesClassifier():
+    # net = runClassifier(pool_type=any)
     for epoch in range(RUNS):  # loop over the dataset multiple times
 
         running_loss = 0.0
@@ -124,6 +155,8 @@ def trainInstancesClassifier():
 
             outputs = net(inputs)
             labels = labels.view(-1)
+
+            # print(outputs.shape, "\n", labels.shape, "\n")
             loss = criterion(outputs, labels)
 
             loss.backward()
@@ -142,15 +175,15 @@ def trainInstancesClassifier():
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
 
-        wandb.log({"epochs": epoch +1 /RUNS, "acc": epoch_accuracy, "loss": epoch_loss}); 
+        wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
 
         # print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
         # print("======================================================") 
-        # print(f'Total run time: {int(minutes)}:{int(seconds)}')
+        # print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
 
 def trainTokensClassifier():
     for epoch in range(RUNS):  # loop over the dataset multiple times
-
+        # net = runClassifier(pool_type=any)
         running_loss = 0.0
         running_accuracy = 0.0
         for (inputs, labels) in Tokens.train_dataset_by_tokens:
@@ -160,7 +193,6 @@ def trainTokensClassifier():
             # Forward pass
             outputs = net(inputs)
             labels = labels.squeeze()
-            # print(outputs.shape, "\n", labels.shape)
             if outputs.size(0) != labels.size(0):
                 # Pad the smaller batch to match the size of the larger batch
                 if outputs.size(0) < labels.size(0):
@@ -187,16 +219,16 @@ def trainTokensClassifier():
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
 
-        # wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
+        wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
 
-        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
-        print("======================================================") 
-        print(f'Total run time: {int(minutes)}:{int(seconds)}')
+        # print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        # print("======================================================") 
+        # print(f'Total run time: {int(minutes)}:{int(seconds)}')
     
 def testClassifier():
     running_loss = 0.0
     running_accuracy = 0.0
-
+    # net = runClassifier(pool_type=any)
     net.eval() 
 
     with torch.no_grad(): 
@@ -214,20 +246,25 @@ def testClassifier():
     test_loss = running_loss / len(Main.test_dataset)
     test_accuracy = running_accuracy / len(Main.test_dataset) * 100
     # print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
-    wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
+    wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
 
 def testTokensClassifier():
     running_loss = 0.0
     running_accuracy = 0.0
+
+    # net = runClassifier(pool_type=any)
     net.eval() # switch to evaluation mode
 
     with torch.no_grad(): # turn off gradient computation
         for (inputs, labels) in Tokens.test_dataset_by_tokens:
             # Forward pass
             outputs = net(inputs)
+
             labels = labels.squeeze() #.squeeze()
+            
             if labels.dim() == 0:
                 labels = labels.unsqueeze(0)
+
             if outputs.size(0) != labels.size(0):
                 # Pad the smaller batch to match the size of the larger batch
                 if outputs.size(0) < labels.size(0):
@@ -246,16 +283,10 @@ def testTokensClassifier():
     test_loss = running_loss / len( Tokens.test_dataset_by_tokens)
     test_accuracy = running_accuracy / len(Tokens.test_dataset_by_tokens) * 100
 
-    # wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
-    print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
+    wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
+    # print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
     
-# trainInstancesClassifier()
-# testClassifier()
-
-# trainTokensClassifier()
-# testTokensClassifier()
-
-def handler(classifier):
+def handler(classifier): #, pool_type):
     if classifier == "instances":
         print("Training instances classifier")
         trainInstancesClassifier()
@@ -266,6 +297,13 @@ def handler(classifier):
         testTokensClassifier()
     else:
         print("Should be instances or tokens classifier")
+    
+    # if pool_type == "max":
+    #     print("Using max pooling")
+    #     Classifier(VOCAB_SIZE, pool_type='max')
+    # elif pool_type == "mean":
+    #     print("Using mean pooling")
+    #     Classifier(VOCAB_SIZE, pool_type='avg')
    
 if __name__ == '__main__':
   fire.Fire(handler)
