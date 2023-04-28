@@ -101,6 +101,7 @@ class TransformerBlock(nn.Module):
     def __init__(self, embed_size, heads, dropout, forward_expansion):
         super(TransformerBlock, self).__init__()
         self.attention = MultiheadSelfAttention(embed_size, heads)
+        self.norm1 = nn.LayerNorm(embed_size)
 
 class Classifier(nn.Module):
     def __init__(self, vocab_size, pool_type = 'max', output_dim = 4, embed_dim = 128):
