@@ -1,0 +1,22 @@
+
+Training instances classifier
+Traceback (most recent call last):
+  File "/Users/filip/thesis/Classifier.py", line 347, in <module>
+    fire.Fire(handler)
+  File "/Users/filip/opt/anaconda3/lib/python3.9/site-packages/fire/core.py", line 141, in Fire
+    component_trace = _Fire(component, args, parsed_flag_args, context, name)
+  File "/Users/filip/opt/anaconda3/lib/python3.9/site-packages/fire/core.py", line 475, in _Fire
+    component, remaining_args = _CallAndUpdateTrace(
+  File "/Users/filip/opt/anaconda3/lib/python3.9/site-packages/fire/core.py", line 691, in _CallAndUpdateTrace
+    component = fn(*varargs, **kwargs)
+  File "/Users/filip/thesis/Classifier.py", line 330, in handler
+    trainInstancesClassifier()
+  File "/Users/filip/thesis/Classifier.py", line 194, in trainInstancesClassifier
+    outputs = net(inputs)
+  File "/Users/filip/opt/anaconda3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/filip/thesis/Classifier.py", line 160, in forward
+    x = self.self_attention(x)
+  File "/Users/filip/opt/anaconda3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1102, in _call_impl
+    return forward_call(*input, **kwargs)
+TypeError: forward() missing 3 required positional arguments: 'keys', 'query', and 'mask'
