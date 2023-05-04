@@ -210,9 +210,10 @@ class DecoderBlock(nn.Module):
         super(DecoderBlock, self).__init__()
         self.attention = AlternativeSelfAttention(embed_size, heads)
         self.norm = nn.LayerNorm(embed_size)
-        self.transformer_block = TransformerBlock(
-            embed_size, heads, dropout, forward_expansion
-        )
+        self.transformer_block = TransformerBlock(embed_size, 
+                                                  heads, 
+                                                  dropout, 
+                                                  forward_expansion)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, value, key, src_mask, trg_mask):
@@ -232,8 +233,7 @@ class Decoder(nn.Module):
 
         self.layers = nn.ModuleList(
             [DecoderBlock(embed_size, heads, forward_expansion, dropout, device)
-            for _ in range(num_layers)]
-        )
+            for _ in range(num_layers)])
 
         self.fc_out = nn.Linear(embed_size, trg_vocab_size)
         self.dropout = nn.Dropout(dropout)
@@ -285,7 +285,8 @@ class Transformer(nn.Module):
     def make_trg_mask(self, trg):
         N, trg_length = trg.shape
         trg_mask = torch.tril(torch.ones((trg_length, trg_length))).expand(N, 1, 
-                                                                           trg_length, trg_length)
+                                                                           trg_length, 
+                                                                           trg_length)
         return trg_mask.to(self.device)
     def forward(self, src, trg):
         src_mask = self.make_src_mask(src)
@@ -339,21 +340,19 @@ class Classifier(nn.Module):
             print("Should be max or mean pooling\n")
         return x
 
-net = Classifier(VOCAB_SIZE, pool_type="avg")
+# net = Classifier(VOCAB_SIZE, pool_type="avg")
 
 # def runClassifier(pool_type):
 #     classifier = Classifier(VOCAB_SIZE, pool_type)
 #     return classifier
 
-def optimization():
+def optimization(net):
     # net = runClassifier(pool_type=any)
     return nn.CrossEntropyLoss(), optim.Adam(net.parameters(), lr=0.001)
 
-criterion, optimizer = optimization()
-
 start_time = time.time()
 
-def trainInstancesClassifier():
+def trainInstancesClassifier(net, criterion, optimizer):
     # net = runClassifier(pool_type=any)
     for epoch in range(RUNS):  # loop over the dataset multiple times
 
@@ -391,7 +390,7 @@ def trainInstancesClassifier():
         # print("======================================================") 
         # print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
 
-def trainTokensClassifier():
+def trainTokensClassifier(net, criterion, optimizer):
     for epoch in range(RUNS):  # loop over the dataset multiple times
         # net = runClassifier(pool_type=any)
         running_loss = 0.0
@@ -435,7 +434,7 @@ def trainTokensClassifier():
         # print("======================================================") 
         # print(f'Total run time: {int(minutes)}:{int(seconds)}')
     
-def testClassifier():
+def testClassifier(net, criterion, optimizer):
     running_loss = 0.0
     running_accuracy = 0.0
     # net = runClassifier(pool_type=any)
@@ -458,7 +457,7 @@ def testClassifier():
     # print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
     wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
 
-def testTokensClassifier():
+def testTokensClassifier(net, criterion, optimizer):
     running_loss = 0.0
     running_accuracy = 0.0
 
@@ -495,27 +494,43 @@ def testTokensClassifier():
 
     wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
     # print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
-    
-def handler(classifier): #, pool_type):
-    if classifier == "instances":
-        print("Training instances classifier")
-        trainInstancesClassifier()
-        testClassifier()
-    elif classifier == "tokens":
-        print("Training tokens classifier")
-        trainTokensClassifier()
-        testTokensClassifier()
-    else:
-        print("Should be instances or tokens classifier")
-    
-    # if pool_type == "max":
-    #     print("Using max pooling")
-    #     Classifier(VOCAB_SIZE, pool_type='max')
-    # elif pool_type == "mean":
-    #     print("Using mean pooling")
-    #     Classifier(VOCAB_SIZE, pool_type='avg')
+
+class Handler(object):
+
+    def __init__(self, classifier="instances", pool_type="max") -> None:
+        super().__init__()
+        self.pool_type = pool_type
+        self.classifier = classifier
+
+        # Handler.run(self.classifier, self.pool_type)
+
+    @staticmethod
+    def run(classifier="instances", pool_type="max"):
+        if pool_type == "max":
+            print("Using max pooling")
+            net = Classifier(VOCAB_SIZE, pool_type='max')
+        elif pool_type == "mean":
+            print("Using mean pooling")
+            net = Classifier(VOCAB_SIZE, pool_type='avg')
+        else:
+            print("Should be max or mean pooling")
+            return 1
+        
+        criterion, optimizer = optimization(net)
+
+        if classifier == "instances":
+            print("Training instances classifier")
+            trainInstancesClassifier(net, criterion, optimizer)
+            testClassifier(net, criterion, optimizer)
+        elif classifier == "tokens":
+            print("Training tokens classifier")
+            trainTokensClassifier(net, criterion, optimizer)
+            testTokensClassifier(net, criterion, optimizer)
+        else:
+            print("Should be instances or tokens classifier")
+        
    
 if __name__ == '__main__':
-  fire.Fire(handler)
+  fire.Fire(Handler)
 
 
