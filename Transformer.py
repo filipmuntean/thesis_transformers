@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from main import Main
 from tokens import Tokens
+import itertools
 
 class AlternativeSelfAttention(nn.Module):
     def __init__(self, embed_size, heads = 4, mask = False):
@@ -31,7 +32,7 @@ class AlternativeSelfAttention(nn.Module):
         query = query.reshape(N, query_len, H, self.head_dim)
 
         keys = self.tokeys(keys)
-        queries = self.toqueries(queries)
+        query = self.toqueries(query)
         values = self.tovalues(values)
 
         energy = torch.einsum("nqhd,nkhd->nhqk", [query, keys])
@@ -162,7 +163,11 @@ class Transformer(nn.Module):
                 trg_pad_idx, 
                 embed_size = 256, 
                 num_layers = 6, 
-                forward_expansion = 4, heads = 8, dropout = 0, device = 'meta', max_length = 100):
+                forward_expansion = 4, 
+                heads = 8, 
+                dropout = 0, 
+                device = 'meta', 
+                max_length = 100):
         super(Transformer, self).__init__()
         self.encoder = Encoder(src_vocab_size, 
                                embed_size, 
@@ -194,6 +199,7 @@ class Transformer(nn.Module):
                                                                            trg_length, 
                                                                            trg_length)
         return trg_mask.to(self.device)
+    
     def forward(self, src, trg):
         src_mask = self.make_src_mask(src)
         trg_mask = self.make_trg_mask(trg)
@@ -202,26 +208,56 @@ class Transformer(nn.Module):
         return out
 
 def testTransformer():
-    device = torch.device('meta' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     src_pad_idx = 0
     trg_pad_idx = 0
     src_vocab_size = 100
     trg_vocab_size = 100
     model = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)
+
     for (src, trg) in enumerate(Main.train_dataset):
-
-        out = model(src, trg[:,:-1])
+        trg_flat = list(itertools.chain(*trg))
+        src_tensor = torch.tensor(src, dtype=torch.long).to(device)
+        trg_tensor = torch.tensor(trg_flat, dtype=torch.long).to(device)
+        out = model(src_tensor, trg_tensor[:-1])
         print(out.shape)
-    # for (inputs, labels) in Main.train_dataset:
-    #     inputs = inputs.to(device)
-    #     labels = labels.to(device)
-    #     print(inputs.shape)
-    #     print(labels.shape)
-    #     outputs = model(inputs, labels)
-    #     print(outputs.shape)
-    # epochs = 3
-    
 
+def generate_random_batch(data, batch_size, seq_length):
+    """
+    Generate a batch of training examples by randomly sampling
+    subsequences from the data tensor.
+
+    :param data: A tensor of shape (n_samples, max_seq_length)
+    :param batch_size: The number of samples in a batch
+    :param seq_length: The length of each subsequence to sample
+    :return: A tuple of two tensors:
+                - input_batch: A tensor of shape (batch_size, seq_length)
+                - target_batch: A tensor of shape (batch_size, seq_length)
+    """
+    # randomly sample batch_size start positions from the data tensor
+    starts = torch.randint(size=(batch_size,), low=0, high=data.size(1) - seq_length - 1)
+
+    # create a list of subsequences of length seq_length from the data tensor
+    subsequences = [data[:, start:start+seq_length] for start in starts]
+
+    # stack the list of subsequences into a tensor of shape (batch_size, seq_length)
+    input_batch = torch.stack(subsequences, dim=0)
+
+    # create a target batch by shifting the input batch by one position
+    target_batch = torch.roll(input_batch, shifts=-1, dims=1)
+
+    return input_batch, target_batch
+    
+data = Main.review_tensors
+num_epochs = 3
+batch_size = 32
+seq_length = 65
+for i in range(num_epochs):
+    for j in range(num_batches):
+        # generate a batch of training examples
+        input_batch, target_batch = generate_random_batch(data, batch_size, seq_length)
+
+        # forward pass, backward pass, and update weights here
     # # Step 4: Create an instance of the transformer and move it to the GPU
     # device = torch.device("meta" if torch.cuda.is_available() else "cpu")
     # transformer = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)

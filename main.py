@@ -20,7 +20,6 @@ class Main():
     sentiment_tensors = util.loading.get_sentiment_tensor(padded_sentiments_y)
     
     train_dataset = util.loading.append_lists(review_tensors, sentiment_tensors)
-
     sorted_x_val, sorted_y_val = util.loading.sort_reviews(i2w, x_val, y_val)
 
     batched_x_val, batched_y_val = util.loading.batch_sequences_by_instance(sorted_x_val, sorted_y_val, batch_size = 32)

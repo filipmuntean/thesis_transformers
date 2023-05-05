@@ -150,7 +150,6 @@ def trainInstancesClassifier(net, criterion, optimizer):
             outputs = net(inputs)
             labels = labels.view(-1)
 
-            # print(outputs.shape, "\n", labels.shape, "\n")
             loss = criterion(outputs, labels)
 
             loss.backward()
@@ -177,7 +176,6 @@ def trainInstancesClassifier(net, criterion, optimizer):
 
 def trainTokensClassifier(net, criterion, optimizer):
     for epoch in range(RUNS):  # loop over the dataset multiple times
-        # net = runClassifier(pool_type=any)
         running_loss = 0.0
         running_accuracy = 0.0
         for (inputs, labels) in Tokens.train_dataset_by_tokens:
