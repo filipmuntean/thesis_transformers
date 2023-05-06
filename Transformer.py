@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from main import Main
 from tokens import Tokens
@@ -156,7 +155,7 @@ class Decoder(nn.Module):
         out = self.fc_out(x)
         return out
     
-class Transformer(nn.Module):
+class transformer(nn.Module):
     def __init__(self, src_vocab_size, 
                 trg_vocab_size, 
                 src_pad_idx, 
@@ -206,93 +205,4 @@ class Transformer(nn.Module):
         enc_src = self.encoder(src, src_mask)
         out = self.decoder(trg, enc_src, src_mask, trg_mask)
         return out
-
-def testTransformer():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    src_pad_idx = 0
-    trg_pad_idx = 0
-    src_vocab_size = 100
-    trg_vocab_size = 100
-    model = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)
-
-    for (src, trg) in enumerate(Main.train_dataset):
-        trg_flat = list(itertools.chain(*trg))
-        src_tensor = torch.tensor(src, dtype=torch.long).to(device)
-        trg_tensor = torch.tensor(trg_flat, dtype=torch.long).to(device)
-        out = model(src_tensor, trg_tensor[:-1])
-        print(out.shape)
-
-def generate_random_batch(data, batch_size, seq_length):
-    """
-    Generate a batch of training examples by randomly sampling
-    subsequences from the data tensor.
-
-    :param data: A tensor of shape (n_samples, max_seq_length)
-    :param batch_size: The number of samples in a batch
-    :param seq_length: The length of each subsequence to sample
-    :return: A tuple of two tensors:
-                - input_batch: A tensor of shape (batch_size, seq_length)
-                - target_batch: A tensor of shape (batch_size, seq_length)
-    """
-    # randomly sample batch_size start positions from the data tensor
-    starts = torch.randint(size=(batch_size,), low=0, high=data.size(1) - seq_length - 1)
-
-    # create a list of subsequences of length seq_length from the data tensor
-    subsequences = [data[:, start:start+seq_length] for start in starts]
-
-    # stack the list of subsequences into a tensor of shape (batch_size, seq_length)
-    input_batch = torch.stack(subsequences, dim=0)
-
-    # create a target batch by shifting the input batch by one position
-    target_batch = torch.roll(input_batch, shifts=-1, dims=1)
-
-    return input_batch, target_batch
-    
-data = Main.review_tensors
-num_epochs = 3
-batch_size = 32
-seq_length = 65
-for i in range(num_epochs):
-    for j in range(num_batches):
-        # generate a batch of training examples
-        input_batch, target_batch = generate_random_batch(data, batch_size, seq_length)
-
-        # forward pass, backward pass, and update weights here
-    # # Step 4: Create an instance of the transformer and move it to the GPU
-    # device = torch.device("meta" if torch.cuda.is_available() else "cpu")
-    # transformer = Transformer(src_vocab_size, trg_vocab_size, src_pad_idx, trg_pad_idx).to(device)
-
-    # criterion = nn.CrossEntropyLoss()
-    # optimizer = optim.Adam(transformer.parameters(), lr=0.001)
-
-    # # Step 5: Train the transformer
-    # for epoch in range(epochs):
-        
-    #         src = src.to(device)
-    #         trg = trg.to(device)
-
-    #         optimizer.zero_grad()
-
-    #         output = transformer(src, trg[:, :-1])
-    #         loss = criterion(output.reshape(-1, output.shape[-1]), trg[:, 1:].reshape(-1))
-
-    #         loss.backward()
-    #         optimizer.step()
-
-    # # Step 6: Evaluate the transformer on the test set
-    # transformer.eval()
-    # with torch.no_grad():
-    #     for i, (src, trg) in enumerate(Main.test_dataset):
-    #         src = src.to(device)
-    #         trg = trg.to(device)
-
-    #         output = transformer(src, trg[:, :-1])
-    #         loss = criterion(output.reshape(-1, output.shape[-1]), trg[:, 1:].reshape(-1))
-
-    # # Step 7: Save the model
-    # torch.save(transformer.state_dict(), "transformer.pth")
-
-testTransformer()
-
-        
 

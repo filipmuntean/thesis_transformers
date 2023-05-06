@@ -8,24 +8,23 @@ from tokens import Tokens
 import time
 import fire
 import wandb
-import random
 
 RUNS = 3
 VOCAB_SIZE = len(Main.i2w)
 
 # start a new wandb run to track this script
-wandb.init(
-    # set the wandb project where this run will be logged
-    project="Movie Review Classification",
+# wandb.init(
+#     # set the wandb project where this run will be logged
+#     project="Movie Review Classification",
     
-    # track hyperparameters and run metadata
-    config={
-    "learning_rate": 0.001,
-    "architecture": "RNN",
-    "dataset": "CIFAR-100",
-    "epochs": 21,
-    }
-)
+#     # track hyperparameters and run metadata
+#     config={
+#     "learning_rate": 0.001,
+#     "architecture": "RNN",
+#     "dataset": "CIFAR-100",
+#     "epochs": 21,
+#     }
+# )
 
 class SimpleSelfAttention(nn.Module):
     def __init__(self, b, t, k):
@@ -168,11 +167,11 @@ def trainInstancesClassifier(net, criterion, optimizer):
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
 
-        wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
+        # wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
 
-        # print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
-        # print("======================================================") 
-        # print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
+        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print("======================================================") 
+        print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
 
 def trainTokensClassifier(net, criterion, optimizer):
     for epoch in range(RUNS):  # loop over the dataset multiple times
@@ -211,16 +210,15 @@ def trainTokensClassifier(net, criterion, optimizer):
         total_time_seconds = end_time - start_time
         minutes, seconds = divmod(total_time_seconds, 60)
 
-        wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
+        # wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
 
-        # print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
-        # print("======================================================") 
-        # print(f'Total run time: {int(minutes)}:{int(seconds)}')
+        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print("======================================================") 
+        print(f'Total run time: {int(minutes)}:{int(seconds)}')
     
 def testClassifier(net, criterion, optimizer):
     running_loss = 0.0
     running_accuracy = 0.0
-    # net = runClassifier(pool_type=any)
     net.eval() 
 
     with torch.no_grad(): 
@@ -237,8 +235,8 @@ def testClassifier(net, criterion, optimizer):
 
     test_loss = running_loss / len(Main.test_dataset)
     test_accuracy = running_accuracy / len(Main.test_dataset) * 100
-    # print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
-    wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
+    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
+    # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
 
 def testTokensClassifier(net, criterion, optimizer):
     running_loss = 0.0
@@ -275,8 +273,8 @@ def testTokensClassifier(net, criterion, optimizer):
     test_loss = running_loss / len( Tokens.test_dataset_by_tokens)
     test_accuracy = running_accuracy / len(Tokens.test_dataset_by_tokens) * 100
 
-    wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
-    # print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
+    # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
+    print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
 
 class Handler(object):
 

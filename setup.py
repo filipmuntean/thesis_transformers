@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name = "util",
     version = "0.1",
-    description = "Classification model of IMDB Movie reviews",
+    description = "Classification & Generator model of IMDB Movie reviews built with transformers",
     url = "https://github.com/filipmuntean/thesis_transformers/blob/main/setup.py",
     author = 'Filip Muntean',
     author_email = 'filipmorris@duck.com',
