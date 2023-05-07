@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from Transformer import transformer
 from main import Main
+import random
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -64,30 +65,53 @@ def sample_batch(data, length, batch_size):
     :return: A pair (input, target) of minteger matrices representing the input and target for the model.
     """
 
+    batch_indices = random.sample(range(len(data)), batch_size)
 
-    starts = []
-    # Sample the starting indices of the sequences to slice out for each tensor in the list
-    for tensor in data:
-        starts.append(torch.randint(size=(batch_size,), low=0, high=max(tensor.size(0) - length - 1, 1)))
+    max_size = max([data[i].size(1) for i in batch_indices])
+    # padded_tensors = []
+    # for i in batch_indices:
+    #     seqs = data[i]
+    #     max_size = max(max_size, seqs.size(1))
+    #     for seq in seqs:
+    #         padded_tensors.append(torch.nn.functional.pad(seq, pad, mode='constant'))
+    #     batches.append(len(padded_tensors))
+    padded_tensors = []
+    batches = []
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i + batch_size]
+        for seq in batch:
+            pad = (0, max_size - seq.size(1))
+            # pad = (0, max_size - len(seq))
+            padded_tensors.append(torch.nn.functional.pad(seq, pad, mode='constant'))
+        # batches.append(len(padded_tensors))
 
-    # Slice out the input sequences and targets for each tensor in the list
-    seqs_inputs = [torch.stack([tensor[starts[i][j]:starts[i][j] + length] for j in range(batch_size)]) for i, tensor in enumerate(data)]
-    seqs_targets = [torch.stack([tensor[starts[i][j] + 1:starts[i][j] + length + 1] for j in range(batch_size)]) for i, tensor in enumerate(data)]
-
-    # seqs_inputs = [torch.cat([tensor[start:start + length], torch.zeros(int(max_length - length), dtype=torch.long)]) for tensor, start in zip(data, starts)]
-    # seqs_targets = [torch.cat([tensor[start + 1:start + length + 1], torch.zeros(int(max_length - length), dtype=torch.long)]) for tensor, start in zip(data, starts)]
- 
-    max_length = 2514  # set to the maximum size in the last dimension
-
-    padded_seqs_inputs = [F.pad(seq, pad=(0, 0, 0, max_length - seq.shape[-1]), mode='constant', value=0) for seq in seqs_inputs]
-    padded_seqs_targets = [F.pad(seq, pad=(0, 0, 0, max_length - seq.shape[-1]), mode='constant', value=0) for seq in seqs_targets]
-    # Concatenate the sequences for all tensors into single input and target tensors
-    inputs = torch.cat([s[None, :] for s in padded_seqs_inputs], dim=0).to(torch.long).to(device)
-    targets = torch.cat([s[None, :] for s in padded_seqs_targets], dim=0).to(torch.long).to(device)
-
+    # stack the padded tensors along the batch dimension
+    padded_inputs = [padded_tensors[start:start + length] for start in range(0, len(padded_tensors) - length, length)]
+    padded_targets = [padded_tensors[start + 1:start + length + 1] for start in range(0, len(padded_tensors) - length, length)]
+    
+    inputs = torch.stack([s.unsqueeze(0) for s in padded_inputs], dim=0).to(torch.long)
+    targets = torch.stack([s.unsqueeze(0) for s in padded_targets], dim=0).to(torch.long)
     return inputs, targets
     
-    
+    # max_size = max([len(l) for t in data for b in batch_indices for l in t[b]])
+
+    # padded_inputs = []
+    # padded_targets = []
+    # for t in data:
+    #     for b in batch_indices:
+    #         batch = t[b]
+    #         padded_batch = []
+    #         for seq in batch:
+    #             pad = [0] * (max_size - len(seq))
+    #             padded_seq = seq + pad
+    #             padded_batch.append(padded_seq)
+    #         padded_inputs.append(torch.tensor(padded_batch[:-1]))
+    #         padded_targets.append(torch.tensor(padded_batch[1:]))
+    # inputs = torch.stack(padded_inputs).unsqueeze(2).to(torch.long)
+    # targets = torch.stack(padded_targets).unsqueeze(2).to(torch.long)
+    # return inputs, targets
+ 
+
 data = Main.review_tensors
 num_epochs = 3
 batch_size = 32
@@ -95,7 +119,7 @@ seq_length = 65
 
 for i in range(num_epochs):
     # generate a batch of training examples
-    input_batch, target_batch = sample_batch(Main.review_tensors, length=12, batch_size=16)
+    input_batch, target_batch = sample_batch(data, length=4, batch_size=8)
 
         # forward pass, backward pass, and update weights here
     # # Step 4: Create an instance of the transformer and move it to the GPU
@@ -132,7 +156,7 @@ for i in range(num_epochs):
     # # Step 7: Save the model
     # torch.save(transformer.state_dict(), "transformer.pth")
 
-testTransformer()
+# sample_batch(data, length=4, batch_size=8)
 
         
 

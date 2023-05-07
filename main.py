@@ -1,4 +1,6 @@
 import util
+import torch
+
 
 class Main():
 
@@ -16,6 +18,7 @@ class Main():
 
     # Build tensors
     review_tensors = util.loading.get_review_tensor(padded_reviews_x)
+
     
     sentiment_tensors = util.loading.get_sentiment_tensor(padded_sentiments_y)
     

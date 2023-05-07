@@ -42,27 +42,35 @@ def sample_batch(data, length, batch_size):
     :return: A pair (input, target) of minteger matrices representing the input and target for the model.
     """
 
+    # starts = torch.randint(size=(batch_size,), low=0, high=data.size(0) - length - 1)
 
-    starts = []
-    # Sample the starting indices of the sequences to slice out for each tensor in the list
-    for tensor in data:
-        starts.append(torch.randint(size=(batch_size,), low=0, high=max(tensor.size(0) - length - 1, 1)))
+    # # Slice out the input sequences
+    # seqs_inputs  = [data[start:start + length] for start in starts]
+    # # -- the start index is the one we just sampled, and the end is exactly 'lentgh' positions after that.
+    # seqs_target = [data[start + 1:start + length + 1] for start in starts]
+    # # -- The target is the same sequence as input, except one character ahead (we are asking the model to predict the
+    # #    next character at each position)
 
-    # Slice out the input sequences and targets for each tensor in the list
-    seqs_inputs = [torch.stack([tensor[starts[i][j]:starts[i][j] + length] for j in range(batch_size)]) for i, tensor in enumerate(data)]
-    seqs_targets = [torch.stack([tensor[starts[i][j] + 1:starts[i][j] + length + 1] for j in range(batch_size)]) for i, tensor in enumerate(data)]
+    # # We now have two lists of torch vectors, which we can concatenate into matrices of batch_size-by-length
+    # inputs = torch.cat([s[None, :] for s in seqs_inputs], dim=0).to(torch.long)
+    # target = torch.cat([s[None, :] for s in seqs_target], dim=0).to(torch.long)
+    # # -- Note that we add a singleton dimenson to each vector, s[None.,:], and then concatenate along that dimension.
 
-    # seqs_inputs = [torch.cat([tensor[start:start + length], torch.zeros(int(max_length - length), dtype=torch.long)]) for tensor, start in zip(data, starts)]
-    # seqs_targets = [torch.cat([tensor[start + 1:start + length + 1], torch.zeros(int(max_length - length), dtype=torch.long)]) for tensor, start in zip(data, starts)]
- 
-    max_length = 2514  # set to the maximum size in the last dimension
+    # return inputs, target
 
-    padded_seqs_inputs = [F.pad(seq, pad=(0, 0, 0, max_length - seq.shape[-1]), mode='constant', value=0) for seq in seqs_inputs]
-    padded_seqs_targets = [F.pad(seq, pad=(0, 0, 0, max_length - seq.shape[-1]), mode='constant', value=0) for seq in seqs_targets]
-    # Concatenate the sequences for all tensors into single input and target tensors
-    inputs = torch.cat([s[None, :] for s in padded_seqs_inputs], dim=0).to(torch.long).to(device)
-    targets = torch.cat([s[None, :] for s in padded_seqs_targets], dim=0).to(torch.long).to(device)
+    max_size = max(t.size(1) for t in data)
+    padded_tensors = []
+    for t in data:
+        pad = (0, max_size - t.size(1))
+        padded_tensors.append(torch.nn.functional.pad(t, pad, mode='constant'))
 
+    # stack the padded tensors along the batch dimension
+    padded_inputs = torch.stack(padded_tensors[start:start + length] for start in padded_tensors)
+    padded_targets = torch.stack(padded_tensors[start + 1:start + length + 1] for start in padded_tensors)
+
+    inputs = torch.cat([s[None, :] for s in padded_inputs], dim=0).to(torch.long)
+    targets = torch.cat([s[None, :] for s in padded_targets], dim=0).to(torch.long)
+    
     return inputs, targets
 
 def sample_sequence(model, seed, max_context, length=600, temperature=0.5, verbose=False):
