@@ -55,32 +55,20 @@ block_size = 8
 def get_batch():
     data = Main.review_tensors
     batch = random.choice(data)
-    data_size = len(data)
+    vocab_size = len(Main.i2w)
     tensor_size = batch.size(0)
-    ix = torch.randint(tensor_size - block_size, (batch_size,))
-    x_list, y_list = [], []
-    for tensor in data[:1]:
-        for review in tensor:
-            for i in range(len(review)-1):
-                x = torch.stack([review[i:i+block_size] for i in ix])
-                y = torch.stack([review[i+1:i+block_size+1] for i in ix])
-                
-            x_list.append(x)
-            y_list.append(y)
-            # x = random.choice(x_list)
-            # y = random.choice(y_list)
-            
-    # return x, y
 
-    # for tensor in data:
-    #     for review in tensor:
-    #         tensor_size = tensor.size(0)
-    #         ix = torch.randint(tensor_size - block_size, (batch_size,))
+    ix = torch.randint(tensor_size - block_size, (batch_size,))
+
+    # for tensor in data[:batch_size + 1]:
+    #     for review in data[:batch_size + 1]:
     #         for i in range(len(review)-1):
-                    
-    #             x = torch.stack([tensor[i:i+block_size] for i in ix])
-    #             y = torch.stack([tensor[i+1:i+block_size+1] for i in ix])
-    return x, y
+    #             input = torch.stack([review[i:i+block_size] for i in ix])
+    #             target = torch.stack([review[i+1:i+block_size+1] for i in ix])
+    input = torch.stack([review[ix[i]:ix[i] + block_size] for i, review in enumerate(batch)])
+    target = torch.stack([review[ix[i] + 1:ix[i] + block_size + 1] for i, review in enumerate(batch)])
+
+    return input, target
 
 xb, yb = get_batch()
 print('inputs:')
@@ -94,75 +82,6 @@ for b in range(batch_size):
         context = xb[b, :t + 1]
         target = yb[b, t]
         print(f"when input is {context} the target is {target}")
-
-# def generate_random_batch(data, batch_size, seq_length):
-#     """
-#     Generate a batch of training examples by randomly sampling
-#     subsequences from the data tensor.
-
-#     :param data: A tensor of shape (n_samples, max_seq_length)
-#     :param batch_size: The number of samples in a batch
-#     :param seq_length: The length of each subsequence to sample
-#     :return: A tuple of two tensors:
-#                 - input_batch: A tensor of shape (batch_size, seq_length)
-#                 - target_batch: A tensor of shape (batch_size, seq_length)
-#     """
-#     # randomly sample batch_size start positions from the data tensor
-#     starts = torch.randint(size=(batch_size,), low=0, high=data.size(1) - seq_length - 1)
-
-#     # create a list of subsequences of length seq_length from the data tensor
-#     subsequences = [data[:, start:start+seq_length] for start in starts]
-
-#     # stack the list of subsequences into a tensor of shape (batch_size, seq_length)
-#     input_batch = torch.stack(subsequences, dim=0)
-
-#     # create a target batch by shifting the input batch by one position
-#     target_batch = torch.roll(input_batch, shifts=-1, dims=1)
-
-#     return input_batch, target_batch
-
-# def sample_batch(data, length, batch_size):
-#     """
-#     Takes the data (a single sequence of tokens) and slices out a batch of subsequences to provide as input to the model.
-
-#     For each input instance, it also slices out the sequence that is shofted one position to the right, to provide as a
-#     target for the model.
-
-#     :param data: The (training) data. A single vector of tokens represented by integers
-#     :param length: The length of the subsequences in the batch.
-#     :param batch_size: The number of subsequences in the batch
-#     :return: A pair (input, target) of minteger matrices representing the input and target for the model.
-#     """
-
-#     batch_indices = random.sample(range(len(data)), batch_size)
-
-#     max_size = max([data[i].size(1) for i in batch_indices])
-#     # padded_tensors = []
-#     # for i in batch_indices:
-#     #     seqs = data[i]
-#     #     max_size = max(max_size, seqs.size(1))
-#     #     for seq in seqs:
-#     #         padded_tensors.append(torch.nn.functional.pad(seq, pad, mode='constant'))
-#     #     batches.append(len(padded_tensors))
-#     padded_tensors = []
-#     batches = []
-#     for i in range(0, len(data), batch_size):
-#         batch = data[i:i + batch_size]
-#         for seq in batch:
-#             pad = (0, max_size - seq.size(1))
-#             # pad = (0, max_size - len(seq))
-#             padded_tensors.append(torch.nn.functional.pad(seq, pad, mode='constant'))
-#         # batches.append(len(padded_tensors))
-
-#     # stack the padded tensors along the batch dimension
-#     padded_inputs = [padded_tensors[start:start + length] for start in range(0, len(padded_tensors) - length, length)]
-#     padded_targets = [padded_tensors[start + 1:start + length + 1] for start in range(0, len(padded_tensors) - length, length)]
-    
-#     inputs = torch.stack([s.unsqueeze(0) for s in padded_inputs], dim=0).to(torch.long)
-#     targets = torch.stack([s.unsqueeze(0) for s in padded_targets], dim=0).to(torch.long)
-#     return inputs, targets
-    
-   
  
 # for i in range(num_epochs):
 #     # generate a batch of training examples
