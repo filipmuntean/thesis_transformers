@@ -18,24 +18,7 @@ class Main():
 
     # Build tensors
     review_tensors = util.loading.get_review_tensor(padded_reviews_x)
-    
-    block_size = 8
-    x = review_tensors[:block_size]
-    y = review_tensors[1:block_size + 1]
 
-    review_counter = 0
-    for tensor in review_tensors[:block_size]:
-        for review in tensor:
-            if review_counter == 33:
-                for i in range(len(review)-1):
-                    input_tokens = review[:i+1]
-                    target_token = review[i+1]
-                    print(f"When input is tensor {input_tokens}, the target is: {target_token}")
-                    if review[i] == 0 and review[i+1] == 0:
-                        break  # stop looping through this review
-                # Increment review_counter only after all tokens in the review have been printed
-            review_counter += 1
-    
     sentiment_tensors = util.loading.get_sentiment_tensor(padded_sentiments_y)
     
     train_dataset = util.loading.append_lists(review_tensors, sentiment_tensors)
