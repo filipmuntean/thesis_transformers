@@ -28,6 +28,38 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #         out = model(src_tensor, trg_tensor[:-1])
 #         print(out.shape)
 
+torch.manual_seed(1337)
+batch_size = 4
+block_size = 8
+
+def get_batch_vectorized():
+    data = Main.review_tensors
+    batch = random.choice(data)
+    tensor_size = batch.size(0)
+    ix = torch.randint(tensor_size - block_size, (batch_size,))
+
+    for batch in data[:batch_size + 1]:
+        reviews = torch.cat([tensor for tensor in batch])
+        input = torch.stack([reviews[i:i+block_size] for i in ix])
+        target = torch.stack([reviews[i+1:i+block_size+1] for i in ix])
+
+    return input, target
+
+def get_batch_unvectorized():
+    data = Main.review_tensors
+    batch = random.choice(data)
+    tensor_size = batch.size(0)
+    ix = torch.randint(tensor_size - block_size, (batch_size,))
+
+    for review in data[:batch_size + 1]:
+        for i in range(len(review)-1):
+            input = torch.stack([review[i:i+block_size] for i in ix])
+            target = torch.stack([review[i+1:i+block_size+1] for i in ix])
+    input = torch.stack([review[ix[i]:ix[i] + block_size] for i, review in enumerate(batch)])
+    target = torch.stack([review[ix[i] + 1:ix[i] + block_size + 1] for i, review in enumerate(batch)])
+
+    return input, target
+
 # def exemplify():
 #     block_size = 8
 #     # x = util.Main.review_tensors[:block_size]
@@ -46,42 +78,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #             #             break  # stop looping through this review
 #             #     # Increment review_counter only after all tokens in the review have been printed
 #             # review_counter += 1
-# exemplify()
+# # exemplify()
+# xb, yb = get_batch_vectorized()
+# print('inputs:')
+# print(xb.shape, xb)
+# print('\ntargets:')
+# print(yb.shape, yb)
+# print('-------')
 
-torch.manual_seed(1337)
-batch_size = 4
-block_size = 8
-
-def get_batch():
-    data = Main.review_tensors
-    batch = random.choice(data)
-    vocab_size = len(Main.i2w)
-    tensor_size = batch.size(0)
-
-    ix = torch.randint(tensor_size - block_size, (batch_size,))
-
-    # for tensor in data[:batch_size + 1]:
-    #     for review in data[:batch_size + 1]:
-    #         for i in range(len(review)-1):
-    #             input = torch.stack([review[i:i+block_size] for i in ix])
-    #             target = torch.stack([review[i+1:i+block_size+1] for i in ix])
-    input = torch.stack([review[ix[i]:ix[i] + block_size] for i, review in enumerate(batch)])
-    target = torch.stack([review[ix[i] + 1:ix[i] + block_size + 1] for i, review in enumerate(batch)])
-
-    return input, target
-
-xb, yb = get_batch()
-print('inputs:')
-print(xb.shape, xb)
-print('\ntargets:')
-print(yb.shape, yb)
-print('-------')
-
-for b in range(batch_size):
-    for t in range(block_size):
-        context = xb[b, :t + 1]
-        target = yb[b, t]
-        print(f"when input is {context} the target is {target}")
+# for b in range(batch_size):
+#     for t in range(block_size):
+#         context = xb[b, :t + 1]
+#         target = yb[b, t]
+#         print(f"when input is {context} the target is {target}")
  
 # for i in range(num_epochs):
 #     # generate a batch of training examples
@@ -122,7 +131,6 @@ for b in range(batch_size):
 #     # # Step 7: Save the model
 #     # torch.save(transformer.state_dict(), "transformer.pth")
 
-# # sample_batch(data, length=4, batch_size=8)
 
         
 
