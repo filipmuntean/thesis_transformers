@@ -1,9 +1,6 @@
 import util
-# from util import Transformer
 import torch
-import itertools
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
 from Transformer import transformer
 from main import Main
@@ -32,17 +29,18 @@ torch.manual_seed(1337)
 batch_size = 4
 block_size = 8
 
+data = Main.review_tensors
+batch = random.choice(data)
+tensor_size = batch.size(0)
+VOCAB_SIZE = len(Main.i2w)
+
 def get_batch_vectorized():
-    data = Main.review_tensors
-    batch = random.choice(data)
-    tensor_size = batch.size(0)
     ix = torch.randint(tensor_size - block_size, (batch_size,))
 
     for batch in data[:batch_size + 1]:
         reviews = torch.cat([tensor for tensor in batch])
         input = torch.stack([reviews[i:i+block_size] for i in ix])
         target = torch.stack([reviews[i+1:i+block_size+1] for i in ix])
-
     return input, target
 
 def get_batch_unvectorized():
@@ -57,9 +55,49 @@ def get_batch_unvectorized():
             target = torch.stack([review[i+1:i+block_size+1] for i in ix])
     input = torch.stack([review[ix[i]:ix[i] + block_size] for i, review in enumerate(batch)])
     target = torch.stack([review[ix[i] + 1:ix[i] + block_size + 1] for i, review in enumerate(batch)])
-
     return input, target
 
+xb, yb = get_batch_vectorized()
+# print('inputs:')
+# print(xb.shape, xb)
+# print('\ntargets:')
+# print(yb.shape, yb)
+# print('-------')
+
+class BigramLanguageModel(nn.Module):
+    def __init__(self, vocab_size, embed_dim = 8):
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
+        self.token_embedding_table = nn.Embedding(vocab_size, embed_dim)
+    
+    def forward(self, idx, targets):
+        if torch.max(idx) >= self.token_embedding_table.num_embeddings:
+            print(torch.max(idx))
+            raise ValueError("Input tensor has values outside the range of the embedding table.")
+        
+        logits = self.token_embedding_table(idx)
+
+        B, T, C = logits.shape
+        logits = logits.view(B * T, C)
+        targets = targets.view(B*T)
+        loss = F.cross_entropy(logits, targets)
+        
+        return logits, loss
+    
+    # def generate(self, idx, max_new_tokens):
+    #     for _ in range(max_new_tokens):
+    #         logits, loss = self(idx)
+    #         logits = logits[:, -1, :]
+    #         probs = F.softmax(logits, dim=-1)
+    #         idx_next = torch.multinomial(probs, num_samples=1)
+
+    #         idx = torch.cat((idx, idx_next), dim=1)
+    #     return idx
+
+m = BigramLanguageModel(tensor_size)
+out = m(xb, yb)
+print(out.shape)
 # def exemplify():
 #     block_size = 8
 #     # x = util.Main.review_tensors[:block_size]
@@ -79,12 +117,7 @@ def get_batch_unvectorized():
 #             #     # Increment review_counter only after all tokens in the review have been printed
 #             # review_counter += 1
 # # exemplify()
-# xb, yb = get_batch_vectorized()
-# print('inputs:')
-# print(xb.shape, xb)
-# print('\ntargets:')
-# print(yb.shape, yb)
-# print('-------')
+
 
 # for b in range(batch_size):
 #     for t in range(block_size):

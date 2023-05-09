@@ -1,9 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from main import Main
-from tokens import Tokens
-import itertools
 
 class AlternativeSelfAttention(nn.Module):
     def __init__(self, embed_size, heads = 4, mask = False):
@@ -167,7 +163,7 @@ class transformer(nn.Module):
                 dropout = 0, 
                 device = 'meta', 
                 max_length = 100):
-        super(Transformer, self).__init__()
+        super(transformer, self).__init__()
         self.encoder = Encoder(src_vocab_size, 
                                embed_size, 
                                num_layers, 
