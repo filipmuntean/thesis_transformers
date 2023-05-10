@@ -96,7 +96,6 @@ class MultiheadSelfAttention(nn.Module):
 
         return self.unifyheads(out)
     
-
 class Classifier(nn.Module):
     def __init__(self, vocab_size, pool_type = 'max', output_dim = 4, embed_dim = 128):
         super(Classifier, self).__init__()
@@ -283,13 +282,11 @@ class Handler(object):
         self.pool_type = pool_type
         self.classifier = classifier
 
-        # Handler.run(self.classifier, self.pool_type)
-
     @staticmethod
     def run(classifier="instances", pool_type="max"):
         if pool_type == "max":
             print("Using max pooling")
-            net = Classifier(VOCAB_SIZE, pool_type='max')
+            # net = Classifier(VOCAB_SIZE, pool_type='max')
         elif pool_type == "mean":
             print("Using mean pooling")
             net = Classifier(VOCAB_SIZE, pool_type='avg')
@@ -310,7 +307,6 @@ class Handler(object):
         else:
             print("Should be instances or tokens classifier")
         
-   
 if __name__ == '__main__':
   fire.Fire(Handler)
 

@@ -1,14 +1,33 @@
-import util
+import fire
+import time
+import wandb
 import torch
+import random
+from main import Main
 import torch.nn as nn
+import torch.nn as optim
+from tokens import Tokens
 import torch.nn.functional as F
 from Transformer import transformer
-from main import Main
-import random
 from torch.nn.utils.rnn import pad_sequence
-
+from basicTransformer import basictransformer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+RUNS = 3 
+VOCAB_SIZE = len(Main.i2w)
+# start a new wandb run to track this script
+# wandb.init(
+#     # set the wandb project where this run will be logged
+#     project="Movie Review Classification",
+    
+#     # track hyperparameters and run metadata
+#     config={
+#     "learning_rate": 0.001,
+#     "architecture": "RNN",
+#     "dataset": "CIFAR-100",
+#     "epochs": 21,
+#     }
+# )
 
 # def testTransformer():
 #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -29,12 +48,10 @@ torch.manual_seed(1337)
 batch_size = 4
 block_size = 8
 
-data = Main.review_tensors
-batch = random.choice(data)
-tensor_size = batch.size(0)
-VOCAB_SIZE = len(Main.i2w)
-
 def get_batch_vectorized():
+    data = Main.review_tensors
+    batch = random.choice(data)
+    tensor_size = batch.size(0)
     ix = torch.randint(tensor_size - block_size, (batch_size,))
 
     for batch in data[:batch_size + 1]:
@@ -57,47 +74,47 @@ def get_batch_unvectorized():
     target = torch.stack([review[ix[i] + 1:ix[i] + block_size + 1] for i, review in enumerate(batch)])
     return input, target
 
-xb, yb = get_batch_vectorized()
+# xb, yb = get_batch_vectorized()
 # print('inputs:')
 # print(xb.shape, xb)
 # print('\ntargets:')
 # print(yb.shape, yb)
 # print('-------')
 
-class BigramLanguageModel(nn.Module):
-    def __init__(self, vocab_size, embed_dim = 8):
-        super().__init__()
-        self.vocab_size = vocab_size
-        self.embed_dim = embed_dim
-        self.token_embedding_table = nn.Embedding(vocab_size, embed_dim)
+# class BigramLanguageModel(nn.Module):
+#     def __init__(self, vocab_size, embed_dim = 8):
+#         super().__init__()
+#         self.vocab_size = vocab_size
+#         self.embed_dim = embed_dim
+#         self.token_embedding_table = nn.Embedding(vocab_size, embed_dim)
     
-    def forward(self, idx, targets):
-        if torch.max(idx) >= self.token_embedding_table.num_embeddings:
-            print(torch.max(idx))
-            raise ValueError("Input tensor has values outside the range of the embedding table.")
+#     def forward(self, idx, targets):
+# #         if torch.max(idx) >= self.token_embedding_table.num_embeddings:
+# #             print(torch.max(idx))
+# #             raise ValueError("Input tensor has values outside the range of the embedding table.")
         
-        logits = self.token_embedding_table(idx)
+# #         logits = self.token_embedding_table(idx)
 
-        B, T, C = logits.shape
-        logits = logits.view(B * T, C)
-        targets = targets.view(B*T)
-        loss = F.cross_entropy(logits, targets)
+# #         B, T, C = logits.shape
+# #         logits = logits.view(B * T, C)
+# #         targets = targets.view(B*T)
+# #         loss = F.cross_entropy(logits, targets)
         
-        return logits, loss
+# #         return logits, loss
     
-    # def generate(self, idx, max_new_tokens):
-    #     for _ in range(max_new_tokens):
-    #         logits, loss = self(idx)
-    #         logits = logits[:, -1, :]
-    #         probs = F.softmax(logits, dim=-1)
-    #         idx_next = torch.multinomial(probs, num_samples=1)
+# #     # def generate(self, idx, max_new_tokens):
+# #     #     for _ in range(max_new_tokens):
+# #     #         logits, loss = self(idx)
+# #     #         logits = logits[:, -1, :]
+# #     #         probs = F.softmax(logits, dim=-1)
+# #     #         idx_next = torch.multinomial(probs, num_samples=1)
 
-    #         idx = torch.cat((idx, idx_next), dim=1)
-    #     return idx
+# #     #         idx = torch.cat((idx, idx_next), dim=1)
+# #     #     return idx
 
-m = BigramLanguageModel(tensor_size)
-out = m(xb, yb)
-print(out.shape)
+# # m = BigramLanguageModel(tensor_size)
+# # out = m(xb, yb)
+# # print(out.shape)
 # def exemplify():
 #     block_size = 8
 #     # x = util.Main.review_tensors[:block_size]
@@ -117,14 +134,196 @@ print(out.shape)
 #             #     # Increment review_counter only after all tokens in the review have been printed
 #             # review_counter += 1
 # # exemplify()
-
-
 # for b in range(batch_size):
 #     for t in range(block_size):
 #         context = xb[b, :t + 1]
 #         target = yb[b, t]
 #         print(f"when input is {context} the target is {target}")
- 
+# net = basictransformer(k=4, num_tokens = VOCAB_SIZE)
+
+def optimization(net):
+    return nn.CrossEntropyLoss(), torch.optim.Adam(net.parameters(), lr = 0.0001)
+
+start_time = time.time()
+# criterion, optimizer = optimization(net)
+
+def trainTransformerInstanceClassifier(net, criterion, optimizer):
+    for epoch in range(RUNS):  # loop over the dataset multiple times
+
+        running_loss = 0.0
+        running_accuracy = 0.0
+        for (inputs, labels) in Main.train_dataset:
+        # for inputs in Main.review_tensors:
+            optimizer.zero_grad()
+            outputs = net(inputs)
+            if torch.cuda.is_available():
+                outputs.cuda()
+            labels = labels.view(-1)
+
+            loss = criterion(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+        
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+        epoch_loss = running_loss / len(Main.train_dataset)
+        epoch_accuracy = running_accuracy / len(Main.train_dataset) * 100
+
+        end_time = time.time()
+        total_time_seconds = end_time - start_time
+        minutes, seconds = divmod(total_time_seconds, 60)
+
+        # wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
+
+        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print("======================================================") 
+        print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
+
+def testTransformerClassifier(net, criterion, optimizer):
+    running_loss = 0.0
+    running_accuracy = 0.0
+    net.eval() 
+
+    with torch.no_grad(): 
+        for (inputs, labels) in Main.test_dataset:
+            outputs = net(inputs)
+            labels = labels.squeeze()
+            loss = criterion(outputs, labels)
+
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+    test_loss = running_loss / len(Main.test_dataset)
+    test_accuracy = running_accuracy / len(Main.test_dataset) * 100
+    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}%')
+    # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
+
+def trainTokensClassifier(net, criterion, optimizer):
+    for epoch in range(RUNS):  # loop over the dataset multiple times
+        running_loss = 0.0
+        running_accuracy = 0.0
+        for (inputs, labels) in Tokens.train_dataset_by_tokens:
+            # Zero the gradients
+            optimizer.zero_grad()
+
+            # Forward pass
+            outputs = net(inputs)
+            labels = labels.squeeze()
+            if outputs.size(0) != labels.size(0):
+                # Pad the smaller batch to match the size of the larger batch
+                if outputs.size(0) < labels.size(0):
+                    outputs = nn.functional.pad(outputs, (0, 0, 0, labels.size(0) - outputs.size(0)))
+                else:
+                    labels = nn.functional.pad(labels, (0, outputs.size(0) - labels.size(0)))
+            loss = criterion(outputs, labels)
+            
+            # Backward pass and optimize
+            loss.backward()
+            optimizer.step()
+        
+            # Compute accuracy
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+        epoch_loss = running_loss / len(Tokens.train_dataset_by_tokens)
+        epoch_accuracy = running_accuracy / len(Tokens.train_dataset_by_tokens) * 100
+
+        end_time = time.time()
+        total_time_seconds = end_time - start_time
+        minutes, seconds = divmod(total_time_seconds, 60)
+
+        # wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
+
+        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print("======================================================") 
+        print(f'Total run time: {int(minutes)}:{int(seconds)}')
+
+def testTransformerTokensClassifier(net, criterion, optimizer):
+    running_loss = 0.0
+    running_accuracy = 0.0
+
+    # net = runClassifier(pool_type=any)
+    net.eval() # switch to evaluation mode
+
+    with torch.no_grad(): # turn off gradient computation
+        for (inputs, labels) in Tokens.test_dataset_by_tokens:
+            # Forward pass
+            outputs = net(inputs)
+
+            labels = labels.squeeze() #.squeeze()
+            
+            if labels.dim() == 0:
+                labels = labels.unsqueeze(0)
+
+            if outputs.size(0) != labels.size(0):
+                # Pad the smaller batch to match the size of the larger batch
+                if outputs.size(0) < labels.size(0):
+                    outputs = nn.functional.pad(outputs, (0, 0, 0, labels.size(0) - outputs.size(0)))
+                else:
+                    labels = nn.functional.pad(labels, (0, outputs.size(0) - labels.size(0)))
+            loss = criterion(outputs, labels)
+
+            # Compute accuracy
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.size(0)
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+    test_loss = running_loss / len( Tokens.test_dataset_by_tokens)
+    test_accuracy = running_accuracy / len(Tokens.test_dataset_by_tokens) * 100
+
+    # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
+    print(f'Test Token Loss: {test_loss:.4f}, Test Token Accuracy: {test_accuracy:.4f}%')
+
+# trainTransformerInstanceClassifier(net, criterion, optimizer)
+class Handler(object):
+
+    def __init__(self, classifier="instances") -> None:
+        super().__init__()
+        # self.pool_type = pool_type
+        self.classifier = classifier
+        # self.k = k
+
+    @staticmethod
+    def run(classifier="instances"):
+        net = basictransformer(num_tokens = VOCAB_SIZE)
+        # if k == 128:
+        # elif k == 256:
+        #     net = basictransformer(k=256, num_tokens = VOCAB_SIZE)
+        # elif k == 512:
+        #     net == basictransformer(k=512, num_tokens = VOCAB_SIZE)
+        # else:
+        #     print("k should be 128, 256 or 512")
+        #     return 1 
+        criterion, optimizer = optimization(net)
+
+        if classifier == "instances":
+            print("Training instances classifier")
+            trainTransformerInstanceClassifier(net, criterion, optimizer)
+            testTransformerClassifier(net, criterion, optimizer)
+        elif classifier == "tokens":
+            print("Training tokens classifier")
+            trainTokensClassifier(net, criterion, optimizer)
+            testTransformerTokensClassifier(net, criterion, optimizer)
+        else:
+            print("Should be instances or tokens classifier")
+   
+        
+
+if __name__ == '__main__':
+  fire.Fire(Handler)
 # for i in range(num_epochs):
 #     # generate a batch of training examples
 #     input_batch, target_batch = sample_batch(data, length=4, batch_size=8)

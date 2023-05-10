@@ -1,9 +1,13 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class AlternativeSelfAttention(nn.Module):
     def __init__(self, embed_size, heads = 4, mask = False):
         super(AlternativeSelfAttention, self).__init__()
+
         self.embed_size = embed_size
         self.heads = heads
         self.head_dim = embed_size // heads
@@ -33,13 +37,15 @@ class AlternativeSelfAttention(nn.Module):
         energy = torch.einsum("nqhd,nkhd->nhqk", [query, keys])
 
         if self.mask is not None:
-            energy = energy.masked_fill(self.mask == 0, float("-1e20"))
+            energy = energy.masked_fill(mask == 0, float("-inf"))
+        # TODO look into triul
 
         attention = torch.softmax(energy / (self.embed_size ** (1/2)), dim=3)
 
         out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(
             N, query_len, self.heads * self.head_dim)
         out = self.unifyheads(out)
+
         return out
     
 class TransformerBlock(nn.Module):
@@ -58,9 +64,12 @@ class TransformerBlock(nn.Module):
 
     def forward(self, value, key, query, mask):
         attention = self.attention(value, key, query, mask)
+
         x = self.dropout(self.norm1(attention + query))
+
         forward = self.feed_forward(x)
         out = self.dropout(self.norm2(forward + x))
+
         return out
 
 class Encoder(nn.Module):
@@ -99,11 +108,10 @@ class Encoder(nn.Module):
         N, seq_length = x.shape
         positions = torch.arange(0, seq_length).expand(N, seq_length).to(self.device)
 
-        print(x.shape, self.word_embedding(x).shape, self.position_embedding(positions).shape, out.shape)
         out = self.dropout(self.word_embedding(x) + self.position_embedding(positions))
         for layer in self.layers:
             out = layer(out, out, out, mask)
-        
+
         return out
     
 class DecoderBlock(nn.Module):
@@ -201,4 +209,6 @@ class transformer(nn.Module):
         enc_src = self.encoder(src, src_mask)
         out = self.decoder(trg, enc_src, src_mask, trg_mask)
         return out
+
+
 
