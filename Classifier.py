@@ -8,6 +8,7 @@ from tokens import Tokens
 import time
 import fire
 import wandb
+import tqdm
 
 RUNS = 3
 VOCAB_SIZE = len(Main.i2w)
@@ -137,7 +138,7 @@ start_time = time.time()
 
 def trainInstancesClassifier(net, criterion, optimizer):
     # net = runClassifier(pool_type=any)
-    for epoch in range(RUNS):  # loop over the dataset multiple times
+    for epoch in tqdm.trange(RUNS):  # loop over the dataset multiple times
 
         running_loss = 0.0
         running_accuracy = 0.0
@@ -168,9 +169,9 @@ def trainInstancesClassifier(net, criterion, optimizer):
 
         # wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
 
-        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print(f"Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%")
         print("======================================================") 
-        print(f'Total run time: {int(minutes)}:{int(seconds)}\n')
+        print(f"Total run time: {int(minutes)}:{int(seconds)}\n")
 
 def trainTokensClassifier(net, criterion, optimizer):
     for epoch in range(RUNS):  # loop over the dataset multiple times
@@ -211,9 +212,9 @@ def trainTokensClassifier(net, criterion, optimizer):
 
         # wandb.log({"epochs": epoch +1 /RUNS, "train token accuracy": epoch_accuracy, "train token loss": epoch_loss}); 
 
-        print(f'Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%')
+        print(f"Epoch [{epoch+1}/{RUNS}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}%")
         print("======================================================") 
-        print(f'Total run time: {int(minutes)}:{int(seconds)}')
+        print(f"Total run time: {int(minutes)}:{int(seconds)}")
     
 def testClassifier(net, criterion, optimizer):
     running_loss = 0.0

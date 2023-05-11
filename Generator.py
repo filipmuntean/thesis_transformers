@@ -2,6 +2,7 @@ import fire
 import time
 import wandb
 import torch
+import tqdm
 import random
 from main import Main
 import torch.nn as nn
@@ -11,6 +12,7 @@ import torch.nn.functional as F
 from Transformer import transformer
 from torch.nn.utils.rnn import pad_sequence
 from basicTransformer import basictransformer
+from Classifier import Classifier
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 RUNS = 3 
@@ -148,7 +150,7 @@ start_time = time.time()
 # criterion, optimizer = optimization(net)
 
 def trainTransformerInstanceClassifier(net, criterion, optimizer):
-    for epoch in range(RUNS):  # loop over the dataset multiple times
+    for epoch in range(RUNS): #tqdm.trange(RUNS):  # loop over the dataset multiple times
 
         running_loss = 0.0
         running_accuracy = 0.0
@@ -207,10 +209,10 @@ def testTransformerClassifier(net, criterion, optimizer):
     # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
 
 def trainTokensClassifier(net, criterion, optimizer):
-    for epoch in range(RUNS):  # loop over the dataset multiple times
+    for epoch in tqdm(range(RUNS)):  # loop over the dataset multiple times
         running_loss = 0.0
         running_accuracy = 0.0
-        for (inputs, labels) in Tokens.train_dataset_by_tokens:
+        for (inputs, labels) in Main.train_dataset:
             # Zero the gradients
             optimizer.zero_grad()
 
@@ -290,15 +292,23 @@ def testTransformerTokensClassifier(net, criterion, optimizer):
 # trainTransformerInstanceClassifier(net, criterion, optimizer)
 class Handler(object):
 
-    def __init__(self, classifier="instances") -> None:
+    def __init__(self, classifier="classifier", batch="instances") -> None:
         super().__init__()
         # self.pool_type = pool_type
         self.classifier = classifier
-        # self.k = k
+        self.batch = batch
 
     @staticmethod
-    def run(classifier="instances"):
+    def run(classifier = "classifier", batch="instances"):
+        
+        if classifier == "classifier":
+            net = Classifier(VOCAB_SIZE)
+        elif classifier == "basic":
+            net = basictransformer(num_tokens = VOCAB_SIZE)
+        elif classifier == "transformer":
+            net = transformer(src_vocab_size = VOCAB_SIZE, trg_vocab_size = VOCAB_SIZE, src_pad_idx=0, trg_pad_idx=0, device=device)
         net = basictransformer(num_tokens = VOCAB_SIZE)
+        
         # if k == 128:
         # elif k == 256:
         #     net = basictransformer(k=256, num_tokens = VOCAB_SIZE)
@@ -309,11 +319,11 @@ class Handler(object):
         #     return 1 
         criterion, optimizer = optimization(net)
 
-        if classifier == "instances":
+        if batch == "instances":
             print("Training instances classifier")
             trainTransformerInstanceClassifier(net, criterion, optimizer)
             testTransformerClassifier(net, criterion, optimizer)
-        elif classifier == "tokens":
+        elif batch == "tokens":
             print("Training tokens classifier")
             trainTokensClassifier(net, criterion, optimizer)
             testTransformerTokensClassifier(net, criterion, optimizer)

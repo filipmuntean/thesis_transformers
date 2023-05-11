@@ -50,7 +50,7 @@ class MultiheadSelfAttention(nn.Module):
         out = torch.bmm(dot, values).view(B, H, T, S)
         out = out.transpose(1, 2).contiguous().view(B, T, S * H)
 
-        return self.unifyheads(dot)
+        return self.unifyheads(out)
 
 class TransformerBlock(nn.Module):
   def __init__(self, k, heads):
@@ -75,7 +75,7 @@ class TransformerBlock(nn.Module):
     return x
   
 class basictransformer(nn.Module):
-    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 4, depth = 6, seq_length = 512):
+    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 1024):
         super().__init__()
 
         self.num_tokens = num_tokens
@@ -87,7 +87,7 @@ class basictransformer(nn.Module):
             tblocks.append(TransformerBlock(k, heads))
         self.tblocks = nn.Sequential(*tblocks)
 
-        self.toprobs = nn.Linear(k, heads)
+        self.toprobs = nn.Linear(k, num_classes)
         self.do = nn.Dropout(0.1)
 
     def forward(self, x):

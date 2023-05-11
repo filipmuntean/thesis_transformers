@@ -1,4 +1,5 @@
-# Thesis Project - Transformers from scratch
+# Thesis wq
+Project - Transformers from scratch
 
 ## 1. Loading the data
 
