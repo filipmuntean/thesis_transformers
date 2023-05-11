@@ -280,7 +280,7 @@ def testTokensClassifier(net, criterion, optimizer):
 
 class Handler(object):
 
-    def __init__(self, classifier="instances", pool_type="max") -> None:
+    def __init__(self, classifier="instances", pool_type="max"):
         super().__init__()
         self.pool_type = pool_type
         self.classifier = classifier
