@@ -138,7 +138,7 @@ start_time = time.time()
 
 def trainInstancesClassifier(net, criterion, optimizer):
     # net = runClassifier(pool_type=any)
-    for epoch in tqdm.trange(RUNS):  # loop over the dataset multiple times
+    for epoch in range(RUNS):  # loop over the dataset multiple times
 
         running_loss = 0.0
         running_accuracy = 0.0
