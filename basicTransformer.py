@@ -125,8 +125,8 @@ class basictransformer(nn.Module):
         print(positions.shape)
         print("====================================")
         positions.reshape(-1)
-        print(positions.shape)
-        print("====================================")
+        # print(positions.shape)
+        # print("====================================")
         positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
         x = tokens + positions
         x = self.tblocks(x)
