@@ -121,8 +121,6 @@ class basictransformer(nn.Module):
         tokens = self.token_emb(x)
         b, t, e = tokens.size()
     
-        print(positions.shape)
-        print("====================================")
         positions = torch.arange(t)
         print(positions.shape)
         print("====================================")
