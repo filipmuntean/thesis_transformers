@@ -120,11 +120,16 @@ class basictransformer(nn.Module):
         # return F.log_softmax(x, dim=1)
         tokens = self.token_emb(x)
         b, t, e = tokens.size()
-        
+    
+        print(positions.shape)
+        print("====================================")
         positions = torch.arange(t)
-        positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
+        print(positions.shape)
+        print("====================================")
         positions.reshape(-1)
-
+        print(positions.shape)
+        print("====================================")
+        positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
         x = tokens + positions
         x = self.tblocks(x)
 
