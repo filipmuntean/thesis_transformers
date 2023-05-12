@@ -303,7 +303,7 @@ class Handler(object):
         
         if classifier == "classifier":
             print("Using the normal Classifier")
-            net = Classifier(VOCAB_SIZE)
+            net = Classifier(VOCAB_SIZE, pool_type='max')
         elif classifier == "basic":
             print("Using the basic transformer")
             net = basictransformer(num_tokens = VOCAB_SIZE)
