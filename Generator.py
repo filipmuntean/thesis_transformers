@@ -209,7 +209,7 @@ def testTransformerClassifier(net, criterion, optimizer):
     # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
 
 def trainTokensClassifier(net, criterion, optimizer):
-    for epoch in tqdm(range(RUNS)):  # loop over the dataset multiple times
+    for epoch in range(RUNS):  # loop over the dataset multiple times
         running_loss = 0.0
         running_accuracy = 0.0
         for (inputs, labels) in Main.train_dataset:
@@ -302,13 +302,13 @@ class Handler(object):
     def run(batch="instances", classifier = "classifier"):
         
         if classifier == "classifier":
-            print("Using the normal Classifier")
+            print("Using the normal Classifier in the GENERATOR.py file")
             net = Classifier(VOCAB_SIZE, pool_type='max')
         elif classifier == "basic":
-            print("Using the basic transformer")
+            print("Using the basic transformer in the GENERATOR.py file")
             net = basictransformer(num_tokens = VOCAB_SIZE)
         elif classifier == "transformer":
-            print("Using the big transformer")
+            print("Using the big transformer in the GENERATOR.py file")
             net = transformer(src_vocab_size = VOCAB_SIZE, trg_vocab_size = VOCAB_SIZE, src_pad_idx=0, trg_pad_idx=0, device=device)
         else: 
             print("Should be classifier, basic or transformer")
@@ -325,11 +325,11 @@ class Handler(object):
         criterion, optimizer = optimization(net)
 
         if batch == "instances":
-            print("Training instances classifier")
+            print("Training instances classifier in the GENERATOR.py file")
             trainTransformerInstanceClassifier(net, criterion, optimizer)
             testTransformerClassifier(net, criterion, optimizer)
         elif batch == "tokens":
-            print("Training tokens classifier")
+            print("Training tokens classifier GENERATOR.py file")
             trainTokensClassifier(net, criterion, optimizer)
             testTransformerTokensClassifier(net, criterion, optimizer)
         else:
