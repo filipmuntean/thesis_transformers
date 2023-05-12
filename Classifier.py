@@ -289,7 +289,7 @@ class Handler(object):
     def run(classifier="instances", pool_type="max"):
         if pool_type == "max":
             print("Using max pooling")
-            # net = Classifier(VOCAB_SIZE, pool_type='max')
+            net = Classifier(VOCAB_SIZE, pool_type='max')
         elif pool_type == "mean":
             print("Using mean pooling")
             net = Classifier(VOCAB_SIZE, pool_type='avg')

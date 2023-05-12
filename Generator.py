@@ -299,15 +299,20 @@ class Handler(object):
         self.batch = batch
 
     @staticmethod
-    def run(classifier = "classifier", batch="instances"):
+    def run(batch="instances", classifier = "classifier"):
         
         if classifier == "classifier":
+            print("Using the normal Classifier")
             net = Classifier(VOCAB_SIZE)
         elif classifier == "basic":
+            print("Using the basic transformer")
             net = basictransformer(num_tokens = VOCAB_SIZE)
         elif classifier == "transformer":
+            print("Using the big transformer")
             net = transformer(src_vocab_size = VOCAB_SIZE, trg_vocab_size = VOCAB_SIZE, src_pad_idx=0, trg_pad_idx=0, device=device)
-        net = basictransformer(num_tokens = VOCAB_SIZE)
+        else: 
+            print("Should be classifier, basic or transformer")
+            return 1
         
         # if k == 128:
         # elif k == 256:
