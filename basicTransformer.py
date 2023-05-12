@@ -75,7 +75,7 @@ class TransformerBlock(nn.Module):
     return x
   
 class basictransformer(nn.Module):
-    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 1024):
+    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 2048):
         super().__init__()
 
         self.num_tokens = num_tokens
@@ -124,10 +124,8 @@ class basictransformer(nn.Module):
         positions = torch.arange(t)
         print(positions.shape)
         print("====================================")
-        positions.reshape(-1)
-        # print(positions.shape)
-        # print("====================================")
-        positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
+        positions = positions.view(1, t).expand(b, t).to(device)
+        # positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
         x = tokens + positions
         x = self.tblocks(x)
 
