@@ -98,7 +98,6 @@ class basictransformer(nn.Module):
                     classes (where c is the nr. of classes).
         """
 
-        tokens = self.token_emb(x)
         b, t = tokens.size()
         e = self.token_emb.embedding_dim
         
