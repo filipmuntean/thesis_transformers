@@ -99,18 +99,19 @@ class basictransformer(nn.Module):
         """
 
         tokens = self.token_emb(x)
-        b, t, e = tokens.size()
+        b, t = tokens.size()
+        e = self.token_emb.embedding_dim
         
-        # max_seq_length = max(self.pos_emb.num_embeddings, t)
-        # positions = torch.arange(max_seq_length, device=x.device)
-        # positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
-        max_seq_len = self.pos_emb.num_embeddings
-        if t > max_seq_len:
-            t = max_seq_len
-            x = x[:, :t]
+        if t > self.seq_length:
+            x = x[:, :self.seq_length]
+            t = self.seq_length
+        elif t < self.seq_length:
+            padding = torch.zeros((b, self.seq_length - t), dtype=torch.long, device=x.device)
+            x = torch.cat([x, padding], dim=1)
 
-        positions = torch.arange(t)
-        positions = self.pos_emb(positions).unsqueeze(0).expand(b, t, e)
+        tokens = self.token_emb(x)
+        positions = torch.arange(self.seq_length, device=x.device)
+        positions = self.pos_emb(positions)[None, :, :].expand(b, self.seq_length, e)
         
         x = tokens + positions
         x = self.tblocks(x)
