@@ -306,7 +306,7 @@ class Handler(object):
             net = Classifier(VOCAB_SIZE, pool_type='max')
         elif classifier == "basic":
             print("Using the basic transformer in the GENERATOR.py file")
-            net = basictransformer(num_tokens = VOCAB_SIZE)
+            net = basictransformer(num_tokens = VOCAB_SIZE, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 16384)
         elif classifier == "transformer":
             print("Using the big transformer in the GENERATOR.py file")
             net = transformer(src_vocab_size = VOCAB_SIZE, trg_vocab_size = VOCAB_SIZE, src_pad_idx=0, trg_pad_idx=0, device=device)
