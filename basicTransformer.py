@@ -98,7 +98,7 @@ class basictransformer(nn.Module):
                     classes (where c is the nr. of classes).
         """
 
-        b, t = tokens.size()
+        b, t = x.size()
         e = self.token_emb.embedding_dim
         
         if t > self.seq_length:
@@ -112,7 +112,7 @@ class basictransformer(nn.Module):
         positions = torch.arange(self.seq_length, device=x.device)
         positions = self.pos_emb(positions)[None, :, :].expand(b, self.seq_length, e)
         
-        x = tokens + positions
+        x = tokens + positions[:, :t, :]
         x = self.tblocks(x)
 
         x = self.toprobs(x.mean(dim=1))
