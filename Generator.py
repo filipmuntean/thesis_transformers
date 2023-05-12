@@ -292,7 +292,7 @@ def testTransformerTokensClassifier(net, criterion, optimizer):
 # trainTransformerInstanceClassifier(net, criterion, optimizer)
 class Handler(object):
 
-    def __init__(self, classifier="classifier", batch="instances") -> None:
+    def __init__(self, classifier="classifier", batch="instances"):
         super().__init__()
         # self.pool_type = pool_type
         self.classifier = classifier
