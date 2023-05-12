@@ -75,7 +75,7 @@ class TransformerBlock(nn.Module):
     return x
   
 class basictransformer(nn.Module):
-    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 2048):
+    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 512):
         super().__init__()
 
         self.num_tokens = num_tokens
