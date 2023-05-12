@@ -81,7 +81,8 @@ class basictransformer(nn.Module):
         self.num_tokens = num_tokens
         self.token_emb = nn.Embedding(num_tokens, k)
         self.pos_emb = nn.Embedding(seq_length, k)
-
+        self.seq_length = seq_length
+        
         tblocks = []
         for i in range(depth):
             tblocks.append(TransformerBlock(k, heads))
