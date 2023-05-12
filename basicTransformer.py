@@ -123,8 +123,8 @@ class basictransformer(nn.Module):
         
         positions = torch.arange(t)
         positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
-        positions.view(-1)
-        
+        positions.reshape(-1)
+
         x = tokens + positions
         x = self.tblocks(x)
 
