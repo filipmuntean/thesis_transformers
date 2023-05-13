@@ -297,27 +297,26 @@ def trainFullTransformerInstances(net, criterion, optimizer):
         for (inputs, labels) in Main.train_dataset:
         # for inputs in Main.review_tensors:
             optimizer.zero_grad()
-            trg = inputs[:, :-1]
-            outputs = net(inputs, trg)
-            print(inputs.shape, "\n")
-            print(trg.shape, "\n")
-            print(outputs.shape, "\n")
             
-            if torch.cuda.is_available():
-                outputs.cuda()
-            # labels = labels.view(-1)
-
-            loss = criterion(outputs, labels)
-
+            trg = inputs[:, :-1]
+            
+            # Get the model's output
+            outputs = net(inputs, trg)
+            
+            # Calculate the loss
+            loss = criterion(outputs.view(-1, outputs.size(-1)), labels.view(-1))
+            
+            # Backward pass and optimization step
             loss.backward()
             optimizer.step()
-        
-            _, predicted = torch.max(outputs.data, 1)
-            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            
+            # Calculate accuracy
+            _, predicted = torch.max(outputs.data, 2)
+            batch_accuracy = (predicted == labels[:, 1:]).sum().item() / (labels[:, 1:] != 0).sum().item()
             running_accuracy += batch_accuracy
 
             running_loss += loss.item()
-
+            
         epoch_loss = running_loss / len(Main.train_dataset)
         epoch_accuracy = running_accuracy / len(Main.train_dataset) * 100
 
