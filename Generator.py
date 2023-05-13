@@ -289,7 +289,66 @@ def testTransformerTokensClassifier(net, criterion, optimizer):
     # wandb.log({"Test accuracy Instance Classifier, max pooling": test_accuracy, "Test loss Instance Classifier, max pooling": test_loss})
     print("Test Loss: {:.4f}, Test Accuracy: {:.4f}%".format(test_loss, test_accuracy))
 
-# trainTransformerInstanceClassifier(net, criterion, optimizer)
+def trainFullTransformerInstances(net, criterion, optimizer):
+    for epoch in range(RUNS): #tqdm.trange(RUNS):  # loop over the dataset multiple times
+
+        running_loss = 0.0
+        running_accuracy = 0.0
+        for (inputs, labels) in Main.train_dataset:
+        # for inputs in Main.review_tensors:
+            optimizer.zero_grad()
+            trg = inputs[:, :-1]
+            outputs = net(inputs, trg)
+            if torch.cuda.is_available():
+                outputs.cuda()
+            labels = labels.view(-1)
+
+            loss = criterion(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+        
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+        epoch_loss = running_loss / len(Main.train_dataset)
+        epoch_accuracy = running_accuracy / len(Main.train_dataset) * 100
+
+        end_time = time.time()
+        total_time_seconds = end_time - start_time
+        minutes, seconds = divmod(total_time_seconds, 60)
+
+        # wandb.log({"Accuracy Instance Classifier, max pooling": epoch_accuracy, "Loss Instance Classifier: max pooling": epoch_loss}); 
+
+        print("Epoch [{}/{}], Loss: {:.4f}, Accuracy: {:.4f}%".format(epoch+1, RUNS, epoch_loss, epoch_accuracy))
+        print("======================================================") 
+        print("Total run time: {}:{}".format(int(minutes), int(seconds)))
+
+def testFullTransformerInstances(net, criterion, optimizer):
+    running_loss = 0.0
+    running_accuracy = 0.0
+    net.eval() 
+
+    with torch.no_grad(): 
+        for (inputs, labels) in Main.test_dataset:
+            trg = inputs[:, :-1]
+            outputs = net(inputs, trg)
+            labels = labels.squeeze()
+            loss = criterion(outputs, labels)
+
+            _, predicted = torch.max(outputs.data, 1)
+            batch_accuracy = (predicted == labels).sum().item() / labels.numel()
+            running_accuracy += batch_accuracy
+
+            running_loss += loss.item()
+
+    test_loss = running_loss / len(Main.test_dataset)
+    test_accuracy = running_accuracy / len(Main.test_dataset) * 100
+    print("Test Loss: {:.4f}, Test Accuracy: {:.4f}%".format(test_loss, test_accuracy))
+    
 class Handler(object):
 
     def __init__(self, classifier="classifier", batch="instances"):
@@ -334,9 +393,14 @@ class Handler(object):
             testTransformerTokensClassifier(net, criterion, optimizer)
         else:
             print("Should be instances or tokens classifier")
-   
-        
 
+        if batch == "instances" & classifier == "transformer":
+            print("Training BIG BOI transformer in the GENERATOR.py file")
+            trainFullTransformerInstances(net, criterion, optimizer)
+            testFullTransformerInstances(net, criterion, optimizer)
+        else:
+            print("Should be instances and transformer classifier")
+   
 if __name__ == '__main__':
   fire.Fire(Handler)
 # for i in range(num_epochs):
