@@ -383,23 +383,20 @@ class Handler(object):
         #     return 1 
         criterion, optimizer = optimization(net)
 
-        if batch == "instances":
+        if batch == "instances" & (classifier == "classifier" | classifier == "basic"):
             print("Training instances classifier in the GENERATOR.py file")
             trainTransformerInstanceClassifier(net, criterion, optimizer)
             testTransformerClassifier(net, criterion, optimizer)
-        elif batch == "tokens":
+        elif batch == "tokens" & (classifier == "classifier" | classifier == "basic"):
             print("Training tokens classifier GENERATOR.py file")
             trainTokensClassifier(net, criterion, optimizer)
             testTransformerTokensClassifier(net, criterion, optimizer)
-        else:
-            print("Should be instances or tokens classifier")
-
-        if batch == "instances" & classifier == "transformer":
+        elif batch == "instances" & classifier == "transformer":
             print("Training BIG BOI transformer in the GENERATOR.py file")
             trainFullTransformerInstances(net, criterion, optimizer)
             testFullTransformerInstances(net, criterion, optimizer)
         else:
-            print("Should be instances and transformer classifier")
+            print("Should be instances or tokens classifier")
    
 if __name__ == '__main__':
   fire.Fire(Handler)
