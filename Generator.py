@@ -290,7 +290,7 @@ def testTransformerTokensClassifier(net, criterion, optimizer):
     print("Test Loss: {:.4f}, Test Accuracy: {:.4f}%".format(test_loss, test_accuracy))
 
 def trainFullTransformerInstances(net, criterion, optimizer):
-    for epoch in range(RUNS): #tqdm.trange(RUNS):  # loop over the dataset multiple times
+    for epoch in range(RUNS): 
 
         running_loss = 0.0
         running_accuracy = 0.0
@@ -299,9 +299,10 @@ def trainFullTransformerInstances(net, criterion, optimizer):
             optimizer.zero_grad()
             trg = inputs[:, :-1]
             outputs = net(inputs, trg)
+
             if torch.cuda.is_available():
                 outputs.cuda()
-            labels = labels.view(-1)
+            # labels = labels.view(-1)
 
             loss = criterion(outputs, labels)
 
