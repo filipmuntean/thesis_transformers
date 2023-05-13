@@ -299,7 +299,10 @@ def trainFullTransformerInstances(net, criterion, optimizer):
             optimizer.zero_grad()
             trg = inputs[:, :-1]
             outputs = net(inputs, trg)
-
+            print(inputs.shape, "\n")
+            print(trg.shape, "\n")
+            print(outputs.shape, "\n")
+            
             if torch.cuda.is_available():
                 outputs.cuda()
             # labels = labels.view(-1)
