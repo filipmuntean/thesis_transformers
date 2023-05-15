@@ -112,8 +112,8 @@ class BigramLanguageModel(nn.Module):
     def forward(self, idx, targets=None):
         
         idx = idx.clamp(max=VOCAB_SIZE-1)
-        print("Min index:", torch.min(idx))
-        print("Max index:", torch.max(idx))
+        # print("Min index:", torch.min(idx))
+        # print("Max index:", torch.max(idx))
 
         logits = self.token_embedding_table(idx)
 
