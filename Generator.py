@@ -75,17 +75,31 @@ torch.manual_seed(1337)
 data_train, data_test = load_data()
 # print('data_train:', data_train.shape)
 # print('data_test:', data_test.shape)
+bigrams = [data_train[i:i+2] for i in range(len(data_train)-1)]
+vocab = list(set(bigrams))
+itos = {i: b for i, b in enumerate(vocab)}
+stoi = {b: i for i, b in enumerate(vocab)}
+
+data_train = torch.tensor([stoi[b] for b in bigrams])
+vocab_size = len(vocab)
+
+print(vocab_size)
+
+exit()
 
 chars = list(set(data_train.numpy()))
 vocab_size = len(chars)
+print('vocab_size:', vocab_size)
 itos = {i: chr(c) for i, c in enumerate(chars)}
 decode = lambda l: ''.join([itos[c] for c in l])
-BATCH_SIZE = 4
+
+BATCH_SIZE = 32
 BLOCK_SIZE = 8
 
 def get_batch_vectorized(data, length, batch_size):
     
-    ix = torch.randint(data.size(0) - length, (batch_size,))
+    # ix = torch.randint(0, data.size(0) - length - 1, (batch_size,))
+    ix = torch.randint(len(data) - length, (batch_size,))
 
     seqs_inputs  = [data[i:i + length] for i in ix]
     
@@ -116,6 +130,9 @@ class BigramLanguageModel(nn.Module):
     
     def forward(self, idx, targets=None):
         
+        print("Min index:", torch.min(idx))
+        print("Max index:", torch.max(idx))
+
         logits = self.token_embedding_table(idx)
 
         if targets is None:
@@ -142,8 +159,25 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 m = BigramLanguageModel(vocab_size)
-logits, loss = m(xb, yb)
-print(logits.shape, loss)
+# logits, loss = m(xb, yb)
+# print(logits.shape, loss)
 
 
-print(decode(m.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1000)[0].tolist()))
+# print(decode(m.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1000)[0].tolist()))
+
+
+optimizer = torch.optim.AdamW(m.parameters(), lr=1e-3)
+
+def train_epoch():
+    for steps in range(100):
+        xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
+
+        logits, loss = m(xb, yb)
+        
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        print(loss.item())
+
+train_epoch()
