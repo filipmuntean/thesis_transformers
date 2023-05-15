@@ -3,27 +3,10 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-ascii_art = """
-
-Let's generate some text!
-
-              .:.               
-             .::::.             
-..         ..::::::''::         
-::::..  .::''''':::    ''.      
-':::::::'         '.  ..  '.    
- ::::::'            : '::   :   
-  :::::     .        : ':'   :  
-  :::::    :::       :.     .' 
- .::::::    ':'     .' '.:::: : 
- ::::::::.         .    ::::: : 
-:::::    '':.... ''      '''' : 
-':::: .:'              ...'' :  
- ..::.   '.........:::::'   :   
-  '':::.   '::'':'':::'   .'    
-        '..  ''.....'  ..'      
-           ''........''
-            """
+BATCH_SIZE = 32
+BLOCK_SIZE = 8
+eval_iters = 300
+max_iters = 3000
 
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
     """
@@ -61,7 +44,8 @@ def load_data():
     Load the enwik8 dataset from the Hutter challenge.
 
     Adapted from idk what """
-    data = here('filip/thesis/data/enwik8.gz')
+    data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
+    # data = here('filip/thesis/data/enwik8.gz')
 
     data_train, data_val, data_test = enwik8(data)
     data_train, data_test = (torch.cat([data_train, data_val], dim=0), data_test) \
@@ -70,31 +54,16 @@ def load_data():
 
 torch.manual_seed(1337)
 
-# print(ascii_art, "\n")
 
 data_train, data_test = load_data()
 # print('data_train:', data_train.shape)
 # print('data_test:', data_test.shape)
-bigrams = [data_train[i:i+2] for i in range(len(data_train)-1)]
-vocab = list(set(bigrams))
-itos = {i: b for i, b in enumerate(vocab)}
-stoi = {b: i for i, b in enumerate(vocab)}
 
-data_train = torch.tensor([stoi[b] for b in bigrams])
-vocab_size = len(vocab)
-
-print(vocab_size)
-
-exit()
-
-chars = list(set(data_train.numpy()))
-vocab_size = len(chars)
-print('vocab_size:', vocab_size)
+chars = list(set(data_train.numpy().tolist()))
+VOCAB_SIZE = len(chars)
 itos = {i: chr(c) for i, c in enumerate(chars)}
 decode = lambda l: ''.join([itos[c] for c in l])
 
-BATCH_SIZE = 32
-BLOCK_SIZE = 8
 
 def get_batch_vectorized(data, length, batch_size):
     
@@ -110,7 +79,19 @@ def get_batch_vectorized(data, length, batch_size):
     
     return inputs, targets
 
-xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
+@torch.no_grad()
+def estimate_loss():
+    out = {}
+    model.eval()
+    for split in [data_train, data_test]:
+        losses = torch.zeros(eval_iters)
+        for k in range(eval_iters):
+            X, Y = get_batch_vectorized(split, BLOCK_SIZE, BATCH_SIZE)
+            logits, loss = model(X, Y)
+            losses[k] = loss.item()
+        out[split] = losses.mean()
+    model.train()
+    return out
 # print('inputs:')
 # print(xb.shape, xb)
 # print('\ntargets:')
@@ -130,6 +111,7 @@ class BigramLanguageModel(nn.Module):
     
     def forward(self, idx, targets=None):
         
+        idx = idx.clamp(max=VOCAB_SIZE-1)
         print("Min index:", torch.min(idx))
         print("Max index:", torch.max(idx))
 
@@ -141,6 +123,7 @@ class BigramLanguageModel(nn.Module):
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = targets.view(B*T)
+            targets = targets.clamp(max=VOCAB_SIZE-1)
             loss = F.cross_entropy(logits, targets)
         
         return logits, loss
@@ -158,26 +141,24 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat([idx, idx_next], dim=-1)
         return idx
 
-m = BigramLanguageModel(vocab_size)
+model = BigramLanguageModel(VOCAB_SIZE)
 # logits, loss = m(xb, yb)
 # print(logits.shape, loss)
 
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
-# print(decode(m.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1000)[0].tolist()))
+for iter in range(max_iters):
 
+    if iter % eval_iters == 0:
+        losses = estimate_loss()
+        print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
 
-optimizer = torch.optim.AdamW(m.parameters(), lr=1e-3)
+    xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
 
-def train_epoch():
-    for steps in range(100):
-        xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
+    logits, loss = model(xb, yb)
+    
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    optimizer.step()
 
-        logits, loss = m(xb, yb)
-        
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
-
-        print(loss.item())
-
-train_epoch()
+print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1500)[0].tolist()))
