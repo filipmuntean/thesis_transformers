@@ -7,7 +7,7 @@ BATCH_SIZE = 32
 BLOCK_SIZE = 8
 eval_iters = 300
 max_iters = 3000
-
+n_embed = 32
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
     """
     Load the enwik8 dataset from the Hutter challenge.
@@ -104,10 +104,11 @@ def estimate_loss():
 #         print(f"when input is {context} the target is {target}")
 
 class BigramLanguageModel(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self):
         super().__init__()
 
-        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
+        self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
+        self.lm_head = nn.Linear(n_embed, VOCAB_SIZE, bias=False)
     
     def forward(self, idx, targets=None):
         
@@ -115,8 +116,9 @@ class BigramLanguageModel(nn.Module):
         # print("Min index:", torch.min(idx))
         # print("Max index:", torch.max(idx))
 
-        logits = self.token_embedding_table(idx)
+        tok_emb = self.token_embedding_table(idx)
 
+        logits = self.lm_head(tok_emb)
         if targets is None:
             loss = None
         else:
@@ -141,7 +143,7 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat([idx, idx_next], dim=-1)
         return idx
 
-model = BigramLanguageModel(VOCAB_SIZE)
+model = BigramLanguageModel()
 # logits, loss = m(xb, yb)
 # print(logits.shape, loss)
 

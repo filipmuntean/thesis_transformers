@@ -1,56 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from selfAttention import MultiheadSelfAttention
 
 NUM_TOKENS = 256
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class MultiheadSelfAttention(nn.Module):
-    def __init__(self, k, heads, mask = False):
-            
-        super().__init__()
-
-        assert k % heads == 0, "k must be divisible by heads"
-
-        self.k, self.heads = k, heads
-
-        self.tokeys = nn.Linear(k, k, bias = False)
-        self.toqueries = nn.Linear(k, k, bias = False)
-        self.tovalues = nn.Linear(k, k, bias = False)
-
-        self.unifyheads = nn.Linear(k, k)
-
-        self.mask = mask
-
-    def forward(self, x):
-        B, T, K = x.size()
-        H = self.heads
-
-        keys = self.tokeys(x)
-        queries = self.toqueries(x)
-        values = self.tovalues(x)
-
-        S = K // H
-
-        keys = keys.view(B, T, H, S)
-        queries = queries.view(B, T, H, S)
-        values = values.view(B, T, H, S)
-
-        keys = keys.transpose(1, 2).contiguous().view(B * H, T, S)
-        queries = queries.transpose(1, 2).contiguous().view(B * H, T, S)
-        values = values.transpose(1, 2).contiguous().view(B * H, T, S)
-
-        dot = torch.bmm(queries, keys.transpose(1, 2))
-
-        dot = dot / (K ** (1/2))
-
-        dot = F.softmax(dot, dim = 2)
-
-        out = torch.bmm(dot, values).view(B, H, T, S)
-        out = out.transpose(1, 2).contiguous().view(B, T, S * H)
-
-        return self.unifyheads(out)
 
 class TransformerBlock(nn.Module):
   def __init__(self, k, heads):
