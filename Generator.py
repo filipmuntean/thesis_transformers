@@ -10,6 +10,7 @@ eval_iters = 300
 eval_interval = 500
 learning_rate = 1e-3
 n_embed = 32
+n_layer = 12
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
@@ -164,11 +165,13 @@ class Block(nn.Module):
         head_size = n_embed // n_head
         self.sa = MultiHeadAttention(n_head, head_size)
         self.ffwd = FeedForward(n_embed)
+        self.ln1 = nn.LayerNorm(n_embed)
+        self.ln2 = nn.LayerNorm(n_embed)
 
     def forward(self, x):
         # Make sure to add residual connections
-        x = x + self.sa(x)
-        x = x + self.ffwd(x)
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
         return x
 
 class BigramLanguageModel(nn.Module):
@@ -184,9 +187,7 @@ class BigramLanguageModel(nn.Module):
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
         # self.blocks = nn.Sequential (*[Block(n_embed, n_head = 4) for _ in range(n_layer)])
         self.blocks = nn.Sequential(
-            Block(n_embed, n_head = 4),
-            Block(n_embed, n_head = 4),
-            Block(n_embed, n_head = 4),
+            *[Block(n_embed, n_head = 4) for _ in range(n_layer)]
         )
         self.sa_heads = MultiHeadAttention(4, n_embed//4)
         self.ffwd = FeedForward(n_embed)
