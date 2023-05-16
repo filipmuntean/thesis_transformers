@@ -212,5 +212,5 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
-print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1500)[0].tolist()))
+print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=2000)[0].tolist()))
 
