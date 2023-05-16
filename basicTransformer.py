@@ -7,7 +7,6 @@ NUM_TOKENS = 256
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 class TransformerBlock(nn.Module):
   def __init__(self, k, heads):
     super().__init__()

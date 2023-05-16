@@ -5,9 +5,13 @@ import torch.nn.functional as F
 
 BATCH_SIZE = 32
 BLOCK_SIZE = 8
+max_iters = 5000
 eval_iters = 300
-max_iters = 3000
+eval_interval = 500
+learning_rate = 1e-3
 n_embed = 32
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
     """
     Load the enwik8 dataset from the Hutter challenge.
@@ -103,22 +107,57 @@ def estimate_loss():
 #         target = yb[b, t]
 #         print(f"when input is {context} the target is {target}")
 
+class Head(nn.Module):
+    ''' one head self attention'''
+
+    def __init__(self, head_size):
+        super().__init__()
+
+        self.key = nn.Linear(n_embed, head_size, bias = False)
+        self.query = nn.Linear(n_embed, head_size, bias = False)
+        self.value = nn.Linear(n_embed, head_size, bias = False)
+        self.register_buffer('tril', torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)))
+
+    def forward(self, x):
+        B, T, C = x.shape
+        k = self.key(x)
+        q = self.query(x)
+
+        wei = q @ k.transpose(-2, -1) * C**(-0.5)
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = F.softmax(wei, dim=-1)
+
+        v = self.value(x)
+        out = wei @ v
+        return out
+
 class BigramLanguageModel(nn.Module):
+
+    '''
+    A simple bigram language model adapted from:
+    Andrej Karpathy -  Let's build GPT: from scratch, with code, spelled out: https://www.youtube.com/watch?v=kCc8FmEb1nY&t=2097s
+    '''
     def __init__(self):
         super().__init__()
 
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
+        self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
+        self.sa_head = Head(n_embed)
         self.lm_head = nn.Linear(n_embed, VOCAB_SIZE, bias=False)
     
     def forward(self, idx, targets=None):
         
+        B, T = idx.shape
+
         idx = idx.clamp(max=VOCAB_SIZE-1)
         # print("Min index:", torch.min(idx))
         # print("Max index:", torch.max(idx))
 
         tok_emb = self.token_embedding_table(idx)
-
-        logits = self.lm_head(tok_emb)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device))
+        x = tok_emb + pos_emb
+        x = self.sa_head(x)
+        logits = self.lm_head(x)
         if targets is None:
             loss = None
         else:
@@ -133,8 +172,9 @@ class BigramLanguageModel(nn.Module):
     def generate(self, idx, max_new_tokens):
 
         for _ in range(max_new_tokens):
-
-            logits, loss = self(idx)
+            
+            idx_cond = idx[:, -BLOCK_SIZE:] # context
+            logits, loss = self(idx_cond)
             logits = logits[:, -1, :]
 
             probs = F.softmax(logits, dim=-1)
@@ -147,11 +187,11 @@ model = BigramLanguageModel()
 # logits, loss = m(xb, yb)
 # print(logits.shape, loss)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 for iter in range(max_iters):
 
-    if iter % eval_iters == 0:
+    if iter % eval_interval == 0:
         losses = estimate_loss()
         print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
 
@@ -163,4 +203,5 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
-print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1500)[0].tolist()))
+# print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1500)[0].tolist()))
+
