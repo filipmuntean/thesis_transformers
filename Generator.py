@@ -183,7 +183,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
         # self.blocks = nn.Sequential (*[Block(n_embed, n_head = 4) for _ in range(n_layer)])
-        self.blockz = nn.Sequential(
+        self.blocks = nn.Sequential(
             Block(n_embed, n_head = 4),
             Block(n_embed, n_head = 4),
             Block(n_embed, n_head = 4),
