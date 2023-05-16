@@ -139,6 +139,18 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, x):
         return torch.cat([h(x) for h in self.heads], dim=-1)
+    
+class FeedForward(nn.Module):
+    '''a simple linear layer followed by non-linearity'''
+
+    def __init__(self, n_embed):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embed, n_embed),
+            nn.ReLU(),
+        )
+    def forward(self, x):
+        return self.net(x)
 
 class BigramLanguageModel(nn.Module):
 
@@ -152,6 +164,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
         self.sa_heads = MultiHeadAttention(4, n_embed//4)
+        self.ff = FeedForward(n_embed)
         self.lm_head = nn.Linear(n_embed, VOCAB_SIZE, bias=False)
     
     def forward(self, idx, targets=None):
@@ -212,5 +225,5 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
-print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=2000)[0].tolist()))
+print(decode(model.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()))
 
