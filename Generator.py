@@ -62,15 +62,15 @@ data_train, data_test = load_data()
 # print('data_test:', data_test.shape)
 
 chars = list(set(data_train.numpy()))
-print('chars:', chars)
+# print('chars:', chars)
 
 VOCAB_SIZE = len(chars)
-print('VOCAB_SIZE:', VOCAB_SIZE)
+# print('VOCAB_SIZE:', VOCAB_SIZE)
 # TODO print whats happening
 i2c = {i: chr(c) for i, c in enumerate(chars)}
-print('i2c:', i2c)
+# print('i2c:', i2c)
 decode = lambda l: ''.join([i2c[c] for c in l])
-print(decode(data_train[:5])[0].tolist())
+# print(decode(data_train[:5])[0].tolist())
 def get_batch_vectorized(data, length, batch_size):
 
     '''This function was taken and adapted from Peter Bloem -  Transformers from Scratch: 
