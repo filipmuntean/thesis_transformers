@@ -1,11 +1,11 @@
-import torch, gzip, os, wget, pickle, random, re, sys
+import torch, gzip, os
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
 # hyperparameters
 BATCH_SIZE = 64
-BLOCK_SIZE = 256 #max length of the prediction
+BLOCK_SIZE = 256 
 max_iters = 5000
 eval_iters = 200
 eval_interval = 500
@@ -14,19 +14,14 @@ n_embed = 384
 n_layer = 6
 n_head = 6
 dropout = 0.2
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# hyperparameters
 
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
     """
-    Load the enwik8 dataset from the Hutter challenge.
-
-    Adapted from https://github.com/openai/blocksparse/blob/master/examples/transformer/enwik8.py
-    :param path:
-    :param n_train:
-    :param n_valid:
-    :param n_test:
-    :return:
+    This function was taken and adapted from Peter Bloem - Transformers from Scratch: https://github.com/pbloem/former/blob/master/experiments/generate.py
     """
+
     if path is None:
         path = here('data/enwik8.gz')
 
@@ -40,7 +35,7 @@ def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
     
 def here(subpath=None):
     """
-    :return: the path in which the package resides (the directory containing the 'former' dir)
+    This function was taken and adapted from Peter Bloem -  Transformers from Scratch: https://github.com/pbloem/former/blob/master/experiments/generate.py
     """
     if subpath is None:
         return os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
@@ -49,11 +44,11 @@ def here(subpath=None):
 
 def load_data():
     """
-    Load the enwik8 dataset from the Hutter challenge.
+    Load the enwik8 dataset from the Hutter challenge. This function was taken and adapted from Peter Bloem -  Transformers from Scratch: 
+    https://github.com/pbloem/former/blob/master/experiments/generate.py  """
 
-    Adapted from idk what """
-    data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
-    # data = here('filip/thesis/data/enwik8.gz')
+    # data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
+    data = here('filip/thesis/data/enwik8.gz')
 
     data_train, data_val, data_test = enwik8(data)
     data_train, data_test = (torch.cat([data_train, data_val], dim=0), data_test) \
@@ -62,21 +57,26 @@ def load_data():
 
 torch.manual_seed(1337)
 
-
 data_train, data_test = load_data()
 # print('data_train:', data_train.shape)
 # print('data_test:', data_test.shape)
 
-chars = list(set(data_train.numpy().tolist()))
+chars = list(set(data_train.numpy()))
+print('chars:', chars)
+
 VOCAB_SIZE = len(chars)
-itos = {i: chr(c) for i, c in enumerate(chars)}
-decode = lambda l: ''.join([itos[c] for c in l])
-
-
+print('VOCAB_SIZE:', VOCAB_SIZE)
+# TODO print whats happening
+i2c = {i: chr(c) for i, c in enumerate(chars)}
+print('i2c:', i2c)
+decode = lambda l: ''.join([i2c[c] for c in l])
+print(decode(data_train[:5])[0].tolist())
 def get_batch_vectorized(data, length, batch_size):
+
+    '''This function was taken and adapted from Peter Bloem -  Transformers from Scratch: 
+    https://github.com/pbloem/former/blob/master/experiments/generate.py'''
     
-    # ix = torch.randint(0, data.size(0) - length - 1, (batch_size,))
-    ix = torch.randint(len(data) - length, (batch_size,))
+    ix = torch.randint(0, data.size(0) - length - 1, (batch_size,))
 
     seqs_inputs  = [data[i:i + length] for i in ix]
     
@@ -100,6 +100,7 @@ def estimate_loss():
         out[split] = losses.mean()
     model.train()
     return out
+
 # print('inputs:')
 # print(xb.shape, xb)
 # print('\ntargets:')
@@ -129,9 +130,11 @@ class Head(nn.Module):
         k = self.key(x)
         q = self.query(x)
 
-        wei = q @ k.transpose(-2, -1) * C**(-0.5)
+        wei = (q @ k.transpose(-2, -1)) * C**(-0.5)
+        #TODO check precedence
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
+        #TODO move dropout after mhsa and after ff
         wei = self.dropout(wei)
 
         v = self.value(x)
@@ -145,6 +148,7 @@ class MultiHeadAttention(nn.Module):
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embed, n_embed)
         self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
@@ -159,17 +163,18 @@ class FeedForward(nn.Module):
             nn.Linear(n_embed, 4 * n_embed),
             nn.ReLU(),
             nn.Linear(4 * n_embed, n_embed),
+            #TODO move dropout inside block
             nn.Dropout(dropout),
         )
     def forward(self, x):
         return self.net(x)
-    
+
 class Block(nn.Module):
     ''' Transformer block '''
 
     def __init__(self, n_embed, n_head):
         super().__init__()
-        # n_embed is the embedding dimension
+
         head_size = n_embed // n_head
         self.sa = MultiHeadAttention(n_head, head_size)
         self.ffwd = FeedForward(n_embed)
@@ -180,12 +185,13 @@ class Block(nn.Module):
         # Make sure to add residual connections
         x = x + self.sa(self.ln1(x))
         x = x + self.ffwd(self.ln2(x))
+        # TODO add dropouts
         return x
 
-class BigramLanguageModel(nn.Module):
+class Transformer(nn.Module):
 
     '''
-    A simple bigram language model adapted from:
+    A simple transformer model adapted from:
     Andrej Karpathy -  Let's build GPT: from scratch, with code, spelled out: https://www.youtube.com/watch?v=kCc8FmEb1nY&t=2097s
     '''
     def __init__(self):
@@ -193,7 +199,6 @@ class BigramLanguageModel(nn.Module):
 
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
-        # self.blocks = nn.Sequential (*[Block(n_embed, n_head = 4) for _ in range(n_layer)])
         self.blocks = nn.Sequential(
             *[Block(n_embed, n_head = n_head) for _ in range(n_layer)],
         )
@@ -214,13 +219,15 @@ class BigramLanguageModel(nn.Module):
         x = self.blocks(x)
         x = self.ln_f(x)
         logits = self.lm_head(x)
-
+        # TODO move loss to trianing loop
         if targets is None:
             loss = None
         else:
             B, T, C = logits.shape
+            #TODO doublecheck dimension logic (transpose from former)
             logits = logits.view(B * T, C)
             targets = targets.view(B*T)
+            #TODO add assert to check index error
             targets = targets.clamp(max=VOCAB_SIZE-1)
             loss = F.cross_entropy(logits, targets)
         
@@ -229,10 +236,10 @@ class BigramLanguageModel(nn.Module):
     def generate(self, idx, max_new_tokens):
 
         for _ in range(max_new_tokens):
-            
+            #TODO add temperature parameter
             idx_cond = idx[:, -BLOCK_SIZE:] # context
             logits, loss = self(idx_cond)
-            logits = logits[:, -1, :]
+            logits = logits[:, -1, :] # divide by temperature ?
 
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
@@ -240,10 +247,8 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat([idx, idx_next], dim=-1)
         return idx
 
-model = BigramLanguageModel()
-# logits, loss = m(xb, yb)
-# print(logits.shape, loss)
-
+model = Transformer()
+# TODO add weight decay ?
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 for iter in range(max_iters):
@@ -256,9 +261,10 @@ for iter in range(max_iters):
 
     logits, loss = model(xb, yb)
     
+    #TODO invesitgate zero grad
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
 
-# print(decode(model.generate(torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1000)[0].tolist()))
-open('more.txt', 'w').write(decode(model.generate(torch.zeros((1, 1), dtype=torch.long), max_new_tokens=10000)[0].tolist()))
+print(decode(model.generate(torch.zeros((1, 1), dtype=torch.long), max_new_tokens=1000)[0].tolist()))
+# open('more.txt', 'w').write(decode(model.generate(torch.zeros((1, 1), dtype=torch.long), max_new_tokens=10000)[0].tolist()))
