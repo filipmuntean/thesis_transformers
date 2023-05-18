@@ -47,8 +47,8 @@ def load_data():
     Load the enwik8 dataset from the Hutter challenge. This function was taken and adapted from Peter Bloem -  Transformers from Scratch: 
     https://github.com/pbloem/former/blob/master/experiments/generate.py  """
 
-    # data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
-    data = here('filip/thesis/data/enwik8.gz')
+    data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
+    # data = here('filip/thesis/data/enwik8.gz')
 
     data_train, data_val, data_test = enwik8(data)
     data_train, data_test = (torch.cat([data_train, data_val], dim=0), data_test) \
