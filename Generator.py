@@ -14,7 +14,9 @@ n_embed = 384
 n_layer = 6
 n_head = 6
 dropout = 0.2
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+device = torch.device('cuda')
 # hyperparameters
 
 def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
