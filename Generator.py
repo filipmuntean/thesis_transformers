@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import traceback
 # hyperparameters
-BATCH_SIZE = 256
-BLOCK_SIZE = 64
-max_iters = 1000000
+BATCH_SIZE = 32
+BLOCK_SIZE = 8
+max_iters = 500
 eval_interval = 500
 eval_iters = 200
 learning_rate = 3e-4
@@ -89,7 +89,13 @@ def estimate_loss():
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
             X, Y = get_batch_vectorized(split, BLOCK_SIZE, BATCH_SIZE)
-            logits, loss = model(X, Y)
+            # logits, loss = model(X, Y)
+            logits = model(X)
+            B, T, C = logits.shape
+            logits = logits.view(B * T, C)
+            targets = Y.clamp(max=VOCAB_SIZE - 1)
+            targets = targets.view(B * T)
+            loss = F.cross_entropy(logits, targets)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -192,54 +198,68 @@ class Transformer(nn.Module):
         )
         self.ln_f = nn.LayerNorm(n_embed)
         self.lm_head = nn.Linear(n_embed, VOCAB_SIZE, bias=False)
-    
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
     def forward(self, idx, targets=None):
-        
+        # B, T = idx.shape
+        # idx = idx.clamp(max=VOCAB_SIZE - 1)
+        # # idx and targets are both (B,T) tensor of integers
+        # tok_emb = self.token_embedding_table(idx) # (B,T,C)
+        # pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,C)
+        # x = tok_emb + pos_emb # (B,T,C)
+        # x = self.blocks(x) # (B,T,C)
+        # x = self.ln_f(x) # (B,T,C)
+        # logits = self.lm_head(x) # (B,T,vocab_size)
+
+        # if targets is None:
+        #     loss = None
+        # else:
+        #     B, T, C = logits.shape
+        #     logits = logits.view(B*T, C)
+        #     targets = targets.clamp(max=VOCAB_SIZE-1)
+        #     targets = targets.view(B*T)
+        #     loss = F.cross_entropy(logits, targets)
+
+        # return logits, loss
         B, T = idx.shape
+        idx = idx.clamp(max=VOCAB_SIZE - 1)
+        # idx is a (B, T) tensor of integers
+        tok_emb = self.token_embedding_table(idx)  # (B, T, C)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T, C)
+        x = tok_emb + pos_emb  # (B, T, C)
+        x = self.blocks(x)  # (B, T, C)
+        x = self.ln_f(x)  # (B, T, C)
+        logits = self.lm_head(x)  # (B, T, vocab_size)
+        return logits
 
-        # if B > VOCAB_SIZE - 1 or T > BLOCK_SIZE - 1:
-        #     print("Index out of range", idx)
-        #     print("------")
-        #     print(traceback.print_tb())
-        #     print("------")
-
-        idx = idx.clamp(max=VOCAB_SIZE-1)
-        # print("Min index:", torch.min(idx))
-        # print("Max index:", torch.max(idx))
-        tok_emb = self.token_embedding_table(idx)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=device))
-        x = tok_emb + pos_emb
-        x = self.blocks(x)
-        x = self.ln_f(x)
-        logits = self.lm_head(x)
-        # TODO move loss to trianing loop
-        if targets is None:
-            loss = None
-        else:
-            B, T, C = logits.shape
-            logits = logits.view(B * T, C)
-            targets = targets.view(B*T)
-            #TODO add assert to check index error
-            targets = targets.clamp(max=VOCAB_SIZE-1)
-            loss = F.cross_entropy(logits, targets)
-        
-        return logits, loss
-
-    def generate(self, idx, max_new_tokens, temperature=0.5):
-
+    def generate(self, idx, max_new_tokens):
+        # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -BLOCK_SIZE:] # context
-            logits, loss = self(idx_cond)
-            logits = logits[:, -1, :] /temperature # divide by temperature ?
-
-            probs = F.softmax(logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
-
-            idx = torch.cat([idx, idx_next], dim=-1)
+            # crop idx to the last block_size tokens
+            idx_cond = idx[:, -BLOCK_SIZE:]
+            # get the predictions
+            logits = self(idx_cond)[0]
+            # focus only on the last time step
+            logits = logits[:, -1] # becomes (B, C)
+            # apply softmax to get probabilities
+            probs = F.softmax(logits, dim=-1) # (B, C)
+            # sample from the distribution
+            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next.squeeze(1)), dim=0) # (B, T+1)
         return idx
 
 model = Transformer()
 model = model.to(device)
+print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
 for iter in range(max_iters):
@@ -249,8 +269,17 @@ for iter in range(max_iters):
         print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
 
     xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
+    # logits, loss = model(xb, yb)
 
-    logits, loss = model(xb, yb)
+    logits = model(xb)
+
+    B, T, C = logits.shape
+    logits = logits.view(B*T, C)
+    targets = yb.clamp(max=VOCAB_SIZE-1)
+    targets = targets.view(B*T)
+
+    # Calculate the loss
+    loss = F.cross_entropy(logits, targets)
     
     # Set all gradients of the model parameters to zero.
     optimizer.zero_grad(set_to_none=True)

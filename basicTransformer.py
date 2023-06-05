@@ -29,7 +29,7 @@ class TransformerBlock(nn.Module):
     x = self.norm2(fedforward + x)
     return x
   
-class basictransformer(nn.Module):
+class basicTransformer(nn.Module):
     def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 512):
         super().__init__()
 
