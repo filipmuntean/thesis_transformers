@@ -1,4 +1,4 @@
-from transformers import GPT2Tokenizer, GPT2Model, pipeline, set_seed, GPT2LMHeadModel
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from datasets import load_dataset
 import os , gzip, torch
 import numpy as np
