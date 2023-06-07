@@ -3,6 +3,9 @@ from datasets import load_dataset
 import os , gzip, torch
 import numpy as np
 import wandb, random, gc
+from torch import nn
+from basicTransformer import TransformerBlock
+
 
 wandb.init(project="preTrained Generator on Cluster", entity="filipmuntean", config={"learning_rate": 3e-4, "batch_size": 32})
 
@@ -13,137 +16,154 @@ device = torch.device('cuda')
 torch.cuda.empty_cache()
 gc.collect()
 
-# def enwik8(path, n_train=int(90e6), n_valid=int(5e6), n_test=int(5e6)):
-#     """
-#     This function was taken and adapted from Peter Bloem - Transformers from Scratch: https://github.com/pbloem/former/blob/master/experiments/generate.py
-#     """
-#     if path is None:
-#         path = here('data/enwik8.gz')
+class NoParam(nn.Module):
+    """
+    Wraps a module, stopping parameters from being registered
+    """
 
-#     with gzip.open(path) if path.endswith('.gz') else open(path) as file:
-#         X = np.frombuffer(file.read(n_train + n_valid + n_test), dtype=np.uint8)
-#         trX, vaX, teX = np.split(X, [n_train, n_train + n_valid])
-#         train_dataset = np.copy(trX)
-#         val_dataset = np.copy(vaX)
-#         test_dataset = np.copy(teX)
-#         return torch.from_numpy(train_dataset), torch.from_numpy(val_dataset), torch.from_numpy(test_dataset)
+    def __init__(self, mod):
+
+        super().__init__()
+        self.mod = [mod]
+
+    def cuda(self):
+        self.mod[0].cuda()
+
+    def forward(self, x, *args, **kwargs):
+
+        return self.mod[0](x, *args, **kwargs)
     
-# def here(subpath=None):
-#     """
-#     This function was taken and adapted from Peter Bloem -  Transformers from Scratch: https://github.com/pbloem/former/blob/master/experiments/generate.py
-#     """
-#     if subpath is None:
-#         return os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
-#     return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', subpath))
+class IBlock(nn.Module):
+    """
+    Transformer block to be inserted into GPT2 stack. Allows conditionals
+    to be registered prior to forward.
+    """
 
-# def load_data():
-#     """
-#     Load the enwik8 dataset from the Hutter challenge. This function was taken and adapted from Peter Bloem -  Transformers from Scratch: 
-#     https://github.com/pbloem/former/blob/master/experiments/generate.py  """
+    def __init__(self, emb, *args, mult=0.0, csize=None, cond=[None], **kwargs):
 
-#     data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
-#     # data = here('filip/thesis/data/enwik8.gz')
+        super().__init__()
+        self.block = TransformerBlock(emb, *args, **kwargs)
+        self.mult = nn.Parameter(torch.tensor([mult]))
 
-#     data_train, data_val, data_test = enwik8(data) 
-#     data_train, data_test = (torch.cat([data_train, data_val], dim=0), data_test) \
-#                             if final == True else (data_train, data_val)
+        self.cond = cond
+        self.cond_out = [None]
 
-#     return data_train, data_test
+        if csize is not None:
+            self.to_cond = nn.Sequential(
+                nn.Linear(csize, 2 * csize), nn.ReLU(),
+                nn.Linear(2 * csize, emb)
+            )
 
-# data_train, data_test = load_data()
-# list_data_train = data_train.tolist()
-# list_data_test = data_test.tolist()
+            # self.to_cond = nn.Linear(csize, emb)
 
-dataset = load_dataset("enwik8")
-print(dataset)
+    def forward(self, x, layer_past=None, attention_mask=None, head_mask=None):
 
-def encode_batch(batch):
-  """Encodes a batch of input data using the model tokenizer."""
-  encoding = tokenizer(batch["text"], padding="max_length", truncation=True, max_length=1024)
-  # For language modeling the labels need to be the input_ids
-  #encoding["labels"] = encoding["input_ids"]
-  return encoding
+        b, l, e = x.size()
 
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        if self.cond is not None and len(self.cond) > 0 and self.cond[0] is not None:
+            cond = self.to_cond(self.cond[0])
+            assert cond.size() == (b, e), f'{cond.size()} versus {b, e}'
 
-model = GPT2LMHeadModel.from_pretrained("gpt2")
-tokenizer.pad_token = tokenizer.eos_token
+            self.cond_out[0] = cond
 
-column_names = dataset["train"].column_names
-dataset = dataset.map(encode_batch, remove_columns=column_names, batched=True)
+            xc = x + cond[:, None, :]
+        else:
+            xc = x
 
-block_size = 50
-# Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
-def group_texts(examples):
-  # Concatenate all texts.
-  concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
-  total_length = len(concatenated_examples[list(examples.keys())[0]])
-  # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-  # customize this part to your needs.
-  total_length = (total_length // block_size) * block_size
-  # Split by chunks of max_len.
-  result = {
-    k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
-    for k, t in concatenated_examples.items()
-  }
-  result["labels"] = result["input_ids"].copy()
-  return result
+        r = self.mult * self.block(xc) +  x
 
-dataset = dataset.map(group_texts,batched=True,)
+        # print(r.size())
+        return r, None, None
 
-dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    def clear(self):
+        del self.cond_out[0]
+        del self.cond_out
+        self.cond_out = [None]
 
-model.to(device)
-wandb.watch(model)
-# decoded_data_test = [str(tokenizer.decode(item)) for item in list_data_test]
+        # del self.cond[0]
+        # del self.cond
+        # self.cond = [None]
 
-model_inputs = tokenizer.batch_encode_plus(
-    decoded_data_test,
-    add_special_tokens=True,
-    padding=True,
-    truncation=True,
-    return_tensors="pt"
-)
+class GPT2Wrapper(nn.Module):
 
-input_ids = model_inputs["input_ids"]
-attention_mask = model_inputs["attention_mask"]
-input_ids = input_ids.to(device)
-attention_mask = attention_mask.to(device)
+    def __init__(self, iblocks=3, gptname='distilgpt2', dropout=0.0, csize=None):
+        super().__init__()
 
-def generate_text_from_dataset(dataset, max_length):
-    with torch.no_grad():
-        output = model.generate(
-            input_ids=dataset.unsqueeze(0).to(device),
-            attention_mask=attention_mask.unsqueeze(0).to(device),
-            max_length=max_length,
-            num_return_sequences=1,
-            do_sample=True,
-            top_k=50,
-            top_p=0.95,
-            temperature=0.7
-        )
-        output = output.to(device)
-    generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
-    return generated_text
+        self.tokenizer = GPT2Tokenizer.from_pretrained(gptname)
+        model = GPT2LMHeadModel.from_pretrained(gptname)
+        model.eval()
 
-prompt_length = 50  # The number of tokens to use as a prompt
-max_length = 100  # The maximum length of the generated text
-prompt = model_inputs["input_ids"][0][:prompt_length]   # Extract a prompt from the dataset
+        for param in model.parameters():
+            param.requires_grad = False
 
-print(torch.cuda.memory_summary(device=None, abbreviated=False))
-with torch.no_grad():
-    generated_text = generate_text_from_dataset(prompt, max_length)
-    gemerated_text = generated_text.to(device)
-    wandb.log({"generated_text": generated_text})
-    print(generated_text)
+        emb = model.config.n_embd
+        self.ctx = model.config.n_ctx
 
-wandb.finish()
-# text = "I am doing"
+        self.container = [None]
 
-# encoded_input = tokenizer(data, return_tensors='pt')
-# output = model(**encoded_input)
+        self.iblocks = nn.ModuleList([
+            IBlock(emb=emb, heads=8, mask=True, ff_hidden_mult=4, dropout=dropout, wide=False, csize=csize, cond=self.container) for _ in range(iblocks+1)
+        ])
 
-# last_hidden_state = output.last_hidden_state
-# print(last_hidden_state)
+        nb = len(model.transformer.h)   # number of GPT2 blocks
+        per = nb // iblocks             # how many blocks to skip between inserted blocks
+
+        h = model.transformer.h # the main stack of transformer blocks
+        for i in range(iblocks-1, -1, -1):
+            print('inserting block at', i*per)
+            block = self.iblocks[i]
+            h.insert(i*per, block)
+        h.insert(len(h), self.iblocks[-1])
+
+        self.register_buffer(name='head_mask', tensor=torch.ones(len(h), model.config.n_head))
+        # We need to create a special head mask because we've changes the number of blocks.
+
+        self.model = NoParam(model)
+
+        # Out own language model head
+        self.headbias = nn.Parameter(torch.zeros(self.tokenizer.vocab_size)) # to token probabilities
+
+        # if csize is not None:
+        #     self.to_cond = nn.Sequential(
+        #         nn.Linear(csize, 2*csize), nn.ReLU(),
+        #         nn.Linear(2*csize, emb)
+        #     )
+
+    def forward(self, x, cond=None):
+
+        b = x.size(0)
+
+        if cond is not None:
+            self.container[0] = cond
+
+        x = self.model(x, head_mask=self.head_mask)[0]
+        # x =  0.0 * cond.view(b, -1).sum(dim=1) #hack
+
+        return x + self.headbias
+
+    def clear(self):
+
+        del self.container[0]
+        del self.container
+        self.container = [None]
+
+        for block in self.iblocks:
+            block.clear()
+
+def load_text(path):
+    """
+    Load text data.
+
+    :param path:
+    :param n_train:
+    :param n_valid:
+    :param n_test:
+    :return:
+    """
+    with gzip.open(path) if path.endswith('.gz') else open(path) as file:
+        s = file.read()
+        tr, vl = int(len(s) * 0.6), int(len(s) * 0.8)
+
+        return str(s[:tr]), str(s[tr:vl]), str(s[vl:])\
+        

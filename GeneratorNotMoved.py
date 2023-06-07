@@ -9,12 +9,9 @@ from basicTransformer import basicTransformer
 # from ytbe import Transformer
 
 # Saved hyperparameters
-# BATCH_SIZE = 224
-# BLOCK_SIZE = 128
-# max_iters = 50000
-BATCH_SIZE = 32
-BLOCK_SIZE = 8
-max_iters = 1000
+BATCH_SIZE = 256
+BLOCK_SIZE = 32
+max_iters = 1000000
 eval_interval = 400
 eval_iters = 200
 learning_rate = 3e-4
@@ -112,7 +109,7 @@ def get_batch_vectorized(data, length, batch_size):
     inputs, targets = inputs.to(device), targets.to(device)
     return inputs, targets
 
-def sample_sequence(model, seed, max_context, length=600, temperature=0.5, verbose=True):
+def sample_sequence(model, seed, max_context = 16, length=600, temperature=0.5, verbose=True):
     """
     Sequentially samples a sequence from the model, token by token.
 
@@ -151,7 +148,8 @@ def sample_sequence(model, seed, max_context, length=600, temperature=0.5, verbo
         if verbose:
             print(str(chr(max(32, c))), end='', flush=True)
 
-        sequence = torch.cat([sequence, c[None]], dim=0) # Append the sampled token to the sequence
+        sequence = torch.cat([sequence, c], dim=0) # Append the sampled token to the sequence
+        # sequence = torch.cat([sequence, c[None]], dim=0)# Append the sampled token to the sequence
 
     print()
     return seed
@@ -159,6 +157,7 @@ def sample_sequence(model, seed, max_context, length=600, temperature=0.5, verbo
 @torch.no_grad()
 def get_seed(data_test):
     seedfr = random.randint(0, data_test.size(0) - 256)
+    print(seedfr);
     seed = data_test[seedfr:seedfr + 256].to(torch.long)
     return seed
 
@@ -173,6 +172,7 @@ def estimate_loss():
             output = model(source)
             target = target.flatten()
             loss = F.cross_entropy(output, target)
+            # loss = F.nll_loss(output.transpose(2, 1), target, reduction='mean')
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -191,7 +191,7 @@ for iter in range(max_iters):
         seed = get_seed(data_test)
         seed = seed.cuda()
 
-        sample_sequence(model, seed = seed, max_context=256, verbose=True, length=600)
+        sample_sequence(model, seed = seed, verbose=True)
         losses = estimate_loss()
         print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
         # wandb.log({"iter": iter, "train loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_train], "test loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_test]})
