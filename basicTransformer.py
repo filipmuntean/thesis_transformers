@@ -30,7 +30,7 @@ class TransformerBlock(nn.Module):
     return x
   
 class basicTransformer(nn.Module):
-    def __init__(self, num_tokens, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 512):
+    def __init__(self, num_tokens = 256, k = 128, num_classes = 4, heads = 2, depth = 6, seq_length = 512):
         super().__init__()
 
         self.num_tokens = num_tokens
@@ -56,13 +56,15 @@ class basicTransformer(nn.Module):
 
         tokens = self.token_emb(x)
         b, t, e = tokens.size()
-    
-        positions = torch.arange(t)
-        positions = positions.reshape(-1)
-        positions = self.pos_emb(positions).unsqueeze(0).expand(b, t, e)
-        # positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
+
+        positions = self.pos_emb(torch.arange(t, device=x.device))[None, :, :].expand(b, t, e)
         x = tokens + positions
+        x = self.do(x)
+
         x = self.tblocks(x)
 
-        x = self.toprobs(x.mean(dim=1))
+        x = x.max(dim=1)[0]
+
+        x = self.toprobs(x)
+
         return F.log_softmax(x, dim=1)

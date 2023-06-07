@@ -5,13 +5,16 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.distributions as dist
 import wandb, random
+from basicTransformer import basicTransformer
+# from ytbe import Transformer
+
 # Saved hyperparameters
 # BATCH_SIZE = 224
 # BLOCK_SIZE = 128
 # max_iters = 50000
 BATCH_SIZE = 32
 BLOCK_SIZE = 8
-max_iters = 2000
+max_iters = 1000
 eval_interval = 400
 eval_iters = 200
 learning_rate = 3e-4
@@ -136,13 +139,14 @@ def sample_sequence(model, seed, max_context, length=600, temperature=0.5, verbo
         input = sequence[-max_context:]
 
         # Run the current input through the model
-        logits, _ = model(input[None, :])
-        # logits = model(input[None, :])
+        # logits, _ = model(input[None, :])
+        logits = model(input[None, :])
 
-        output_logits = logits[:, -1, :]
-        # Sample the next token from the probabilitys at the last position of the output.
-        # c = sample(logits[0, -1, :], temperature)
-        c = sample(output_logits, temperature)
+        # output_logits = logits[:, -1, :]
+        # # Sample the next token from the probabilitys at the last position of the output.
+        # print(logits.shape, logits)
+        c = sample(logits[:, -1], temperature)
+        # c = sample(output_logits, temperature)
 
         if verbose:
             print(str(chr(max(32, c))), end='', flush=True)
@@ -158,87 +162,6 @@ def get_seed(data_test):
     seed = data_test[seedfr:seedfr + 256].to(torch.long)
     return seed
 
-# print('inputs:')
-# print(xb.shape, xb)
-# print('\ntargets:')
-# print(yb.shape, yb)
-# print('-------')
-# for b in range(BATCH_SIZE):
-#     for t in range(BLOCK_SIZE):
-#         context = xb[b, :t + 1]
-#         target = yb[b, t]
-#         print(f"when input is {context} the target is {target}")
-
-class Head(nn.Module):
-    ''' one head self attention'''
-
-    def __init__(self, head_size):
-        super().__init__()
-
-        self.key = nn.Linear(n_embed, head_size, bias = False)
-        self.query = nn.Linear(n_embed, head_size, bias = False)
-        self.value = nn.Linear(n_embed, head_size, bias = False)
-        self.register_buffer('tril', torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)))
-
-    def forward(self, x):
-        B, T, C = x.shape
-        k = self.key(x)
-        q = self.query(x)
-
-        wei = (q @ k.transpose(-2, -1)) * C**(-0.5)
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
-        wei = F.softmax(wei, dim=-1)
-    
-        v = self.value(x)
-        out = wei @ v
-        return out
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, num_heads, head_size):
-        super().__init__()
-
-        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embed, n_embed)
-        # self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
-        out = self.proj(out)
-        return out
-    
-class FeedForward(nn.Module):
-    '''a simple linear layer followed by non-linearity'''
-
-    def __init__(self, n_embed):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(n_embed, 4 * n_embed),
-            nn.ReLU(),
-            nn.Linear(4 * n_embed, n_embed),
-        )
-    def forward(self, x):
-        return self.net(x)
-
-class Block(nn.Module):
-    ''' Transformer block '''
-
-    def __init__(self, n_embed, n_head):
-        super().__init__()
-
-        head_size = n_embed // n_head
-        self.sa = MultiHeadAttention(n_head, head_size)
-        self.ffwd = FeedForward(n_embed)
-        self.ln1 = nn.LayerNorm(n_embed)
-        self.ln2 = nn.LayerNorm(n_embed)
-        self.dropout = nn.Dropout(dropout)
-        
-    def forward(self, x):
-        # Make sure to add residual connections
-        x = x + self.sa(self.ln1(x))
-        x = x + self.ffwd(self.ln2(x))
-        x = self.dropout(x)
-        return x
-
 @torch.no_grad()
 def estimate_loss():
     out = {}
@@ -246,102 +169,20 @@ def estimate_loss():
     for split in [data_train, data_test]:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch_vectorized(split, BLOCK_SIZE, BATCH_SIZE)
-            logits, loss = model(X, Y)
+            source, target = get_batch_vectorized(split, BLOCK_SIZE, BATCH_SIZE)
+            output = model(source)
+            target = target.flatten()
+            loss = F.cross_entropy(output, target)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
     return out
 
-class Transformer(nn.Module):
-
-    '''
-    A simple transformer model adapted from:
-    Andrej Karpathy -  Let's build GPT: from scratch, with code, spelled out: https://www.youtube.com/watch?v=kCc8FmEb1nY&t=2097s
-    '''
-    def __init__(self):
-        super().__init__()
-
-        self.token_embedding_table = nn.Embedding(VOCAB_SIZE, n_embed)
-        self.position_embedding_table = nn.Embedding(BLOCK_SIZE, n_embed)
-        self.blocks = nn.Sequential(
-            *[Block(n_embed, n_head = n_head) for _ in range(n_layer)],
-        )
-        self.ln_f = nn.LayerNorm(n_embed)
-        self.lm_head = nn.Linear(n_embed, VOCAB_SIZE, bias=False)
-        self.apply(self._init_weights)
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-
-    def forward(self, idx, targets=None):
-        # B, T, E = idx.shape
-        # idx and targets are both (B,T) tensor of integers
-        tok_emb = self.token_embedding_table(idx) # (B,T,C)
-        B, T, E = tok_emb.shape
-        pos_emb = self.position_embedding_table(torch.arange(T, device=device))[None, :, :].expand(B,T, E) # (T,C)`
-        # pos_emb = pos_emb[None, :, :].expand(B, T, C) # (B,T,C)
-        # pos_emb = torch.broadcast_to(pos_emb, (B, T, pos_emb.shape[-1]))
-        x = tok_emb + pos_emb # (B,T,C)
-        x = self.blocks(x) # (B,T,C)
-        x = self.ln_f(x) # (B,T,C)
-        logits = self.lm_head(x) # (B,T,vocab_size)
-
-        if targets is None:
-            loss = None
-        else:
-            B, T, C = logits.shape
-            logits = logits.view(B*T, C)
-            # targets = targets.clamp(max=VOCAB_SIZE-1)
-            targets = targets.view(B*T)
-            loss = F.cross_entropy(nn.Sigmoid(logits), targets)
-        return logits, loss
-        # B, T = idx.shape
-        # tok_emb = self.token_embedding_table(idx)  # (B,T,C)
-        # pos_emb = self.position_embedding_table(torch.arange(T, device=idx.device))  # (T,C)
-
-        # x = tok_emb + pos_emb.unsqueeze(0)  # (B,T,C)
-
-        # x = self.blocks(x)
-        # x = self.ln_f(x)
-        # # x = self.toprobs(x.view(B * T, -1)).view(B, T, self.num_tokens)
-
-        # logits = F.log_softmax(x, dim=2)  # Apply log_softmax on the logits
-        # logits = self.lm_head(x)
-        # if targets is None:
-        #     loss = None
-        # else:
-        #     targets = targets.view(B * T)
-        #     loss = F.nll_loss(logits.view(B * T, -1), targets)
-
-        # return logits, loss
-
-    def generate(self, idx, max_new_tokens):
-        # idx is (B, T) array of indices in the current context
-        for _ in range(max_new_tokens):
-            # crop idx to the last block_size tokens
-            idx_cond = idx[:, -BLOCK_SIZE:]
-            # get the predictions
-            logits, loss = self(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
-            # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=-1) # (B, C)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-        return idx
-
-model = Transformer()
+# model = Transformer()
+model = basicTransformer()
 model = model.to(device)
 # wandb.watch(model)
-print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
+print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
 for iter in range(max_iters):
@@ -355,10 +196,11 @@ for iter in range(max_iters):
         print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
         # wandb.log({"iter": iter, "train loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_train], "test loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_test]})
 
-    xb, yb = get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
-    logits, loss = model(xb, yb)
+    source, target= get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
+    # logits, loss = model(xb, yb)
+    output = model(source)
+    loss = F.nll_loss(output.transpose(2, 1), target, reduction='mean')
 
-    
     # Set all gradients of the model parameters to zero.
     optimizer.zero_grad(set_to_none=True)
     # set_to_none = True is a memory-efficient way to zero out the gradients
@@ -367,11 +209,11 @@ for iter in range(max_iters):
     # wandb.log({"gradient clipping": grad_clip})
     optimizer.step()
 
-context = torch.zeros((1, 1), dtype=torch.long, device = device)
-generated_txt = (model.generate(context, max_new_tokens=2000)[0].tolist())
-decoded_txt = decode(generated_txt)
+# context = torch.zeros((1, 1), dtype=torch.long, device = device)
+# generated_txt = (model.generate(context, max_new_tokens=2000)[0].tolist())
+# decoded_txt = decode(generated_txt)
 
-print(decoded_txt)
+# print(decoded_txt)
 
 # wandb.log({"generated text": generated_txt})
 # open('more.txt', 'w').write(decode(model.generate(torch.zeros((1, 1), dtype=torch.long, device = device), max_new_tokens=10000)[0].tolist()))
