@@ -5,13 +5,14 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.distributions as dist
 import wandb, random
-from basicTransformer import basicTransformer
+from transformerModels import basicTransformer
+from transformerModels import GPT2WrapperRecurrent
 # from ytbe import Transformer
 
 # Saved hyperparameters
 BATCH_SIZE = 256
-BLOCK_SIZE = 32
-max_iters = 1000000
+BLOCK_SIZE = 1
+max_iters = 1000
 eval_interval = 400
 eval_iters = 200
 learning_rate = 3e-4
@@ -25,7 +26,7 @@ final = True
 VOCAB_SIZE = 256
 # -----------------
 
-# wandb.init(project="Generator on Cluster", entity="filipmuntean", config={"learning_rate": 3e-4, "batch_size": 32})
+wandb.init(project="Generator on Cluster", entity="filipmuntean", config={"learning_rate": 3e-4, "batch_size": 32})
 
 def sample(lnprobs, temperature=1.0):
     """
@@ -109,7 +110,7 @@ def get_batch_vectorized(data, length, batch_size):
     inputs, targets = inputs.to(device), targets.to(device)
     return inputs, targets
 
-def sample_sequence(model, seed, max_context = 16, length=600, temperature=0.5, verbose=True):
+def sample_sequence(model, seed, max_context = 256, length=600, temperature=0.5, verbose=True):
     """
     Sequentially samples a sequence from the model, token by token.
 
@@ -134,7 +135,7 @@ def sample_sequence(model, seed, max_context = 16, length=600, temperature=0.5, 
 
         # Input is the tail end of the sampled sequence (as many tokens as the model can handle)
         input = sequence[-max_context:]
-
+        input = input.to(device)
         # Run the current input through the model
         # logits, _ = model(input[None, :])
         logits = model(input[None, :])
@@ -142,13 +143,14 @@ def sample_sequence(model, seed, max_context = 16, length=600, temperature=0.5, 
         # output_logits = logits[:, -1, :]
         # # Sample the next token from the probabilitys at the last position of the output.
         # print(logits.shape, logits)
-        c = sample(logits[:, -1], temperature)
-        # c = sample(output_logits, temperature)
+        # c = sample(logits[:, -1], temperature)
+
+        c = sample(logits[0, -1, :], temperature)
 
         if verbose:
             print(str(chr(max(32, c))), end='', flush=True)
 
-        sequence = torch.cat([sequence, c], dim=0) # Append the sampled token to the sequence
+        sequence = torch.cat([sequence, c[None]], dim=0) # Append the sampled token to the sequence
         # sequence = torch.cat([sequence, c[None]], dim=0)# Append the sampled token to the sequence
 
     print()
@@ -170,18 +172,19 @@ def estimate_loss():
         for k in range(eval_iters):
             source, target = get_batch_vectorized(split, BLOCK_SIZE, BATCH_SIZE)
             output = model(source)
-            target = target.flatten()
-            loss = F.cross_entropy(output, target)
+            target = F.one_hot(target, num_classes=4)  
+
+            loss = F.cross_entropy(output.view(-1, 4), target.view(-1, 4))
             # loss = F.nll_loss(output.transpose(2, 1), target, reduction='mean')
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
     return out
 
-# model = Transformer()
-model = basicTransformer()
+model = GPT2WrapperRecurrent(iblocks = 3, gptname='distilgpt2')
+# model = basicTransformer()
 model = model.to(device)
-# wandb.watch(model)
+wandb.watch(model)
 print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
@@ -194,7 +197,7 @@ for iter in range(max_iters):
         sample_sequence(model, seed = seed, verbose=True)
         losses = estimate_loss()
         print("iter {} train loss: {:.2f} test loss: {:.2f}".format(iter, losses[data_train], losses[data_test]))
-        # wandb.log({"iter": iter, "train loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_train], "test loss batch size 224, block size 128, 50000 iters, eval_interval 500": losses[data_test]})
+        wandb.log({"iter": iter, "WITH RECURRENT CONNECTION: train loss batch size 256, block size 1, 1000 iters, eval_interval 500": losses[data_train], "WITH RECURRENT CONNECTION: test loss batch size 256, block size 1, 1000 iters, eval_interval 500": losses[data_test]})
 
     source, target= get_batch_vectorized(data_train, BLOCK_SIZE, BATCH_SIZE)
     # logits, loss = model(xb, yb)
@@ -206,7 +209,7 @@ for iter in range(max_iters):
     # set_to_none = True is a memory-efficient way to zero out the gradients
     loss.backward()
     grad_clip = clip_grad_norm_(model.parameters(), max_norm=1.0)
-    # wandb.log({"gradient clipping": grad_clip})
+    wandb.log({"gradient clipping": grad_clip})
     optimizer.step()
 
 # context = torch.zeros((1, 1), dtype=torch.long, device = device)
@@ -218,4 +221,4 @@ for iter in range(max_iters):
 # wandb.log({"generated text": generated_txt})
 # open('more.txt', 'w').write(decode(model.generate(torch.zeros((1, 1), dtype=torch.long, device = device), max_new_tokens=10000)[0].tolist()))
 
-# wandb.finish()
+wandb.finish()

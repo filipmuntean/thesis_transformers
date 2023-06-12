@@ -1,9 +1,11 @@
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, modeling_utils
+from transformers import modeling_utils
 import os , gzip, torch, pandas as pd, fire, random, gc, wandb, math
 from torch import nn
-from basicTransformer import TransformerBlock
+from transformerModels import TransformerBlock
 import torch.nn.functional as F
 from collections.abc import Iterable
+from transformerModels import GPT2WrapperRecurrent
+
 
 NUCLEUS_P = 0.9
 TOP_P = 0.9
@@ -11,7 +13,7 @@ LOG2E = math.log2(math.e)
 GRAD_CLIP = 1.0
 DROPOUT = 0.0
 LEARNING_RATE = 3e-4
-BATCH_SIZE = 32
+BATCH_SIZE = 2
 PRINT_EVERY = 5 # How many batches between the printing sample
 max_iters = 1000 # Number of batches to train on
 PRINT_SEED_SIZE = 100 # The size of the sample seed
@@ -56,146 +58,11 @@ title: """
 # wandb.init(project="preTrained Generator on Cluster", entity="filipmuntean", config={"learning_rate": 3e-4, "batch_size": 32})
 
 # Hyperparameters
-gptname = 'gpt2'
+gptname = 'distilgpt2'
 final = True
 device = torch.device('cuda')
 torch.cuda.empty_cache()
 gc.collect()
-
-class NoParam(nn.Module):
-    """
-    Wraps a module, stopping parameters from being registered
-    """
-
-    def __init__(self, mod):
-
-        super().__init__()
-        self.mod = [mod]
-
-    def cuda(self):
-        self.mod[0].cuda()
-
-    def forward(self, x, *args, **kwargs):
-        return self.mod[0](x, *args, **kwargs)
-        # return self.mod[0](x)
-
-class IBlock(nn.Module):
-    """
-    Transformer block to be inserted into GPT2 stack. Allows conditionals
-    to be registered prior to forward.
-    """
-
-    def __init__(self, emb, *args, mult=0.0, csize=None, cond=[None], **kwargs):
-
-        super().__init__()
-        self.block = TransformerBlock(emb, *args, **kwargs)
-        self.mult = nn.Parameter(torch.tensor([mult]))
-
-        self.cond = cond
-        self.cond_out = [None]
-
-        if csize is not None:
-            self.to_cond = nn.Sequential(
-                nn.Linear(csize, 2 * csize), nn.ReLU(),
-                nn.Linear(2 * csize, emb)
-            )
-
-            # self.to_cond = nn.Linear(csize, emb)
-
-    def forward(self, x, layer_past=None, attention_mask=None, head_mask=None):
-
-        b, l, e = x.size()
-
-        if self.cond is not None and len(self.cond) > 0 and self.cond[0] is not None:
-            cond = self.to_cond(self.cond[0])
-            assert cond.size() == (b, e), f'{cond.size()} versus {b, e}'
-
-            self.cond_out[0] = cond
-
-            xc = x + cond[:, None, :]
-        else:
-            xc = x
-
-        r = self.mult * self.block(xc) +  x
-
-        # print(r.size())
-        return r, None, None
-
-    def clear(self):
-        del self.cond_out[0]
-        del self.cond_out
-        self.cond_out = [None]
-
-        # del self.cond[0]
-        # del self.cond
-        # self.cond = [None]
-
-class GPT2Wrapper(nn.Module):
-
-    def __init__(self, iblocks=3, gptname='gpt2', dropout=0.0, csize=None):
-        super().__init__()
-
-        self.tokenizer = GPT2Tokenizer.from_pretrained(gptname, encoder_hidden_states = True)
-        model = GPT2LMHeadModel.from_pretrained(gptname, output_hidden_states=True)
-        model.eval()
-
-        for param in model.parameters():
-            param.requires_grad = False
-
-        emb = model.config.n_embd
-        self.ctx = model.config.n_ctx
-
-        self.container = [None]
-
-        self.iblocks = nn.ModuleList([
-            IBlock(emb=emb, heads=8, mask=True, ff_hidden=4, dropout=dropout, wide=False, csize=csize, cond=self.container) for _ in range(iblocks+1)
-        ])
-
-        nb = len(model.transformer.h)   # number of GPT2 blocks
-        per = nb // iblocks             # how many blocks to skip between inserted blocks
-
-        h = model.transformer.h # the main stack of transformer blocks
-        for i in range(iblocks-1, -1, -1):
-            print('inserting block at', i*per)
-            block = self.iblocks[i]
-            h.insert(i*per, block)
-        h.insert(len(h), self.iblocks[-1])
-
-        self.register_buffer(name='head_mask', tensor=torch.ones(len(h), model.config.n_head))
-        # We need to create a special head mask because we've changes the number of blocks.
-
-        self.model = NoParam(model)
-
-        # Out own language model head
-        self.headbias = nn.Parameter(torch.zeros(self.tokenizer.vocab_size)) # to token probabilities
-
-        # if csize is not None:
-        #     self.to_cond = nn.Sequential(
-        #         nn.Linear(csize, 2*csize), nn.ReLU(),
-        #         nn.Linear(2*csize, emb)
-        #     )
-
-    def forward(self, x, cond=None):
-
-        b = x.size(0)
-
-        if cond is not None:
-            self.container[0] = cond
-
-        x = self.model(x, head_mask=self.head_mask)[0]
-        # x = self.model(x)[0]
-        # x =  0.0 * cond.view(b, -1).sum(dim=1) #hack
-
-        return x + self.headbias
-
-    def clear(self):
-
-        del self.container[0]
-        del self.container
-        self.container = [None]
-
-        for block in self.iblocks:
-            block.clear()
 
 def contains_inf(input):
     if (not isinstance(input, torch.Tensor)) and isinstance(input, Iterable):
@@ -241,7 +108,6 @@ def sample(lnprobs, temperature=1.0):
     next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
 
     return next_token
-
 
 def enwik8(path):
     """
@@ -301,9 +167,9 @@ def go():
     #     torch.manual_seed(PD_SEED)
 
     str_train, str_test, str_val = load_data()
-    
+    print(str_train[:100])
     # create the model
-    model = GPT2Wrapper(iblocks = 3)
+    model = GPT2WrapperRecurrent(iblocks = 3)
 
     if torch.cuda.is_available():
         model.to('cuda')
@@ -314,7 +180,7 @@ def go():
         torch.tensor(model.tokenizer.encode(str_train)), \
         torch.tensor(model.tokenizer.encode(str_val)), \
         torch.tensor(model.tokenizer.encode(str_test))
-
+    print(data_train)
     opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
     # sch = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(i / (arg.lr_warmup / arg.batch_size), 1.0))
     # -- linear learning rate warmup
@@ -498,9 +364,9 @@ def go_pods():
     # else:
     #     torch.manual_seed(arg.seed)
 
-    df = pd.read_csv(here('mmi349/thesis_transformers/data/df_popular_podcasts.csv'))
+    df = pd.read_csv(here('/home/mmi349/thesis_transformers/data/df_popular_podcasts.csv'))
     # data = here('/home/mmi349/thesis_transformers/data/enwik8.gz')
-    with open(here('mmi349/thesis_transformers/data/genre_IDs.txt')) as file:
+    with open(here('/home/mmi349/thesis_transformers/data/genre_IDs.txt')) as file:
         glist = eval(file.read())
         glist = {int(idstr) : name for (idstr, name) in glist}
         rlist = {name : id for (id, name) in glist.items()}
@@ -518,7 +384,7 @@ def go_pods():
     train, val, test = df.iloc[:8000], df.iloc[8000:9000], df.iloc[9000:]
 
     # create the model
-    model = GPT2Wrapper(iblocks=IBLOCKS, csize=len(i2g), gptname=gptname)
+    model = GPT2WrapperRecurrent(iblocks=IBLOCKS, csize=len(i2g), gptname=gptname)
 
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
@@ -569,7 +435,6 @@ def go_pods():
                     with open(f'pd.e{e:03}i{i:02}.txt', 'w') as file:
                         print(outseq[len(PD_SEED):], file=file)
                         print('---------------------------------------------\n', file=file)
-
                         print(PD_SEED + outseq, file=file)
         
     # Generate 10 random podcasts

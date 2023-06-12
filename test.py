@@ -11,7 +11,7 @@ from tokens import Tokens
 import torch.nn.functional as F
 from Transformer import transformer
 from torch.nn.utils.rnn import pad_sequence
-from basicTransformer import basictransformer
+from thesis_transformers.transformers import basictransformer
 from Classifier import Classifier
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
