@@ -271,7 +271,7 @@ class SelfAttentionNarrow(nn.Module):
         x = x.view(b, t, h, s)
         
 
-        keys    = self.tokeys(x).to(device)
+        keys = self.tokeys(x).to(device)
         queries = self.toqueries(x).to(device)
         values  = self.tovalues(x).to(device)
 

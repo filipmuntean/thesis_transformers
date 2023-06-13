@@ -1,12 +1,9 @@
 from transformers import modeling_utils
 import os , gzip, torch, pandas as pd, fire, random, gc, wandb, math
 from torch import nn
-from transformerModels import TransformerBlock
 import torch.nn.functional as F
 from collections.abc import Iterable
-from transformerModels import GPT2WrapperRecurrent
-
-
+from transformerModels import GPT2WrapperRecurrent, basicTransformer, GPT2Wrapper, GPT2WrapperSimple
 NUCLEUS_P = 0.9
 TOP_P = 0.9
 LOG2E = math.log2(math.e)
@@ -26,6 +23,8 @@ TEST_SUBSET = 1000
 TEST_BATCH_SIZE = 4
 DESC_CLIP = 2000
 EPOCHS = 30
+weight_decay = 1e-5
+learning_rate = 3e-4
 # '1315', 'Science & Medicine'
 # '1304', 'Education'
 # '1480', 'Software How-To'
@@ -81,7 +80,6 @@ def contains_nan(input):
         return False
     else:
         return bool(torch.isnan(input).sum() > 0)
-
 
 def sample(lnprobs, temperature=1.0):
     """
@@ -158,7 +156,7 @@ def d(tensor=None):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
     return 'cuda' if tensor.is_cuda else 'cpu'
 
-def go():
+def go(model, opt):
 
     # if PD_SEED < 0:
     #     seed = random.randint(0, 1000000)
@@ -169,7 +167,6 @@ def go():
     str_train, str_test, str_val = load_data()
     print(str_train[:100])
     # create the model
-    model = GPT2WrapperRecurrent(iblocks = 3)
 
     if torch.cuda.is_available():
         model.to('cuda')
@@ -181,7 +178,7 @@ def go():
         torch.tensor(model.tokenizer.encode(str_val)), \
         torch.tensor(model.tokenizer.encode(str_test))
     print(data_train)
-    opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
+    # opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
     # sch = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(i / (arg.lr_warmup / arg.batch_size), 1.0))
     # -- linear learning rate warmup
 
@@ -355,8 +352,7 @@ def tobatch(df, tokenizer, g2i, normalize_genres=True, limit=2000, glist=None):
 
     return ids, genres
 
-
-def go_pods():
+def go_pods(model, opt):
 
     # if arg.seed < 0:
     #     seed = random.randint(0, 1000000)
@@ -384,8 +380,6 @@ def go_pods():
     train, val, test = df.iloc[:8000], df.iloc[8000:9000], df.iloc[9000:]
 
     # create the model
-    model = GPT2WrapperRecurrent(iblocks=IBLOCKS, csize=len(i2g), gptname=gptname)
-
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
 
@@ -394,7 +388,6 @@ def go_pods():
         model.model.mod[0].to('cuda')
 
     tok = model.tokenizer
-    opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
     # sch = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(i / (arg.lr_warmup / arg.batch_size), 1.0))
     # -- linear learning rate warmup
 
@@ -528,6 +521,54 @@ def go_pods():
             print('    ', block.mult)
         print()
 
-if __name__ == "__main__":
-    # fire.Fire(go)
-    go_pods()
+class Handler(object):
+
+    def __init__(self, generator="instances", dataset="enwik8"):
+        super().__init__()
+        self.generator = generator
+        self.dataset = dataset
+
+    @staticmethod
+    def run(generator = "basic", dataset="enwik8"):
+        if generator == "basic":
+            print("=====================BASIC TRANSFORMER=====================")
+            model = basicTransformer()
+            model = model.to(device)
+            # wandb.watch(model)
+            print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
+            optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif generator == "recurrent":
+            print("===================RECURRENT TRANSFORMER=====================")
+            model = GPT2WrapperRecurrent(iblocks = 3, gptname='distilgpt2')
+            model = model.to(device)
+            # wandb.watch(model)
+            print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
+            optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif generator == "pretrained":
+            print("===================PRETRINED TRANSFORMER=====================")
+            model = GPT2Wrapper(iblocks = 3, gptname='distilgpt2')
+            model = model.to(device)
+            # wandb.watch(model)
+            print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
+            optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif generator - "simple":
+            print("===================SIMPLE TRANSFORMER=====================")
+            model = GPT2WrapperSimple(iblocks = 3, gptname='distilgpt2')
+            model = model.to(device)
+            # wandb.watch(model)
+            print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
+            optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            go(model, optimizer)
+        else:
+            print("Invalid generator")
+            return
+        
+        # if dataset == "enwik8":
+        #     go(model, optimizer)
+        # elif dataset == "podcast":
+        #     go_pods(model, optimizer)
+        # else:
+        #     print("Invalid dataset")
+        #     return
+if __name__ == '__main__':
+  fire.Fire(Handler)
