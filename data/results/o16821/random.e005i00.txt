@@ -1,0 +1,6 @@
+chosen genre  Alternative Health
+---------------------------------------------
+description: 
+ EconTalk is a fortnightly interview-style podcast with leading scientists discussing the science of ecology and of our personal and professional relations. Covering a wide range of topics related to ecology, science, politics, sociology, and public policy, we aim to take a deeper look into the science and practice of ecology and to demystify our most cherished traditions of thought. For more information and to find out more about ecology and science, please subscribe to the podcast or email your questions and concerns to econablog.ie or podcast@econablog.ie/fm/web/formattedMessage: econtalk@econablog.ie 
+genres: Natural Sciences, Podcasts, Science & Medicine, Society & Culture, Philosophy 
+title: EconTalk – Ecology and Science ||!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

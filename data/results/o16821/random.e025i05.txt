@@ -1,0 +1,6 @@
+chosen genre  Outdoor
+---------------------------------------------
+description: 
+ The This Week in Media series at TED, hosted by TED and supported by grants and contracts from the Department of Cinematic Arts and Performing Arts, is an ongoing series exploring the work of TED and newsroom TED co-founder Peter Thiel. Launched in 2013, this podcast offers first-person accounts of TED talks and talks published in 2013 and 2016, and publishes in new audio formats at essentialmediagallery.com. 
+genres: Arts, Podcasts 
+title: This Week in Media ||!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

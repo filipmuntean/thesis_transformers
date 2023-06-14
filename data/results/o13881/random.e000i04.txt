@@ -1,0 +1,92 @@
+chosen genre  Local
+---------------------------------------------
+description: 
+ 85264041
+
+focus: Applies light to status bar
+
+type: Placeholder
+
+Effects: MND_LEFT (default.active); }
+
+/* * @default { The following will be applied to a mouse during a move action */
+
+emitRightClick: function(t mouse) {
+
+mne.text();
+
+mne.fillStyle = " solid ";
+
+mne.borderColor = yellow;
+
+mne.fillRectangle(0, 100, 500, 0, -60);
+
+mne.fillRectangle(450, 375, 300, 270, 900);
+
+mne.fillRotation(30);
+
+mne.rotation = auto;
+
+mne.fillStyle = " vertical ";
+
+mne.fillRectangle(150, 600, 180, 0, 60);
+
+mne.fillRotation(0, 100, 150, 0, 50);
+
+mne.rotation = 2x;
+
+mne.fillStyle = " 12px ";
+
+mne.text()[ 0 ].touchColor = "#000000";
+
+mne.previousX = 0;
+
+mne.previousY = 0;
+
+mne.text( " Move " );
+
+mne.removeDown( " Down " );
+
+}
+
+/* *
+
+* @returns { The card of a draw, moves it around the board or swaps with a type, ID or art.
+
+*/
+
+const CARD_CARD_NORMAL = {
+
+mode: " card_main_common ",
+
+description: " Draw from the normal middle card and in another state {in previous card, we use Math.random().
+
+}
+
+*/
+
+macro_rules! foo (moveCard,cardType: CARD_NORMAL,draw: function (o,position,button: " ",aggregate: 0 ) {
+
+return ((button)o) + (aggregate)/ 2 ); }
+
+},
+
+card: function (t card,i text,i arr) {
+
+var x: i + 1, y: t + 2 ;
+
+moveCard(o,i,button,location,button,moveCard(i,Y,Y,\ s :: = " ",radio: 0 ),cardType: T );
+
+return moveCard(t,i,title,card);
+
+})();
+
+/* * @returns { The card of a draw, moves it around the board or swaps with a type, ID or art.
+
+*/
+
+const CARD_CARD_NORMAL = {
+
+mode: " card_main_common ",
+
+description: " Draw from the normal middle

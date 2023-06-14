@@ -72,7 +72,7 @@ class basicTransformer(nn.Module):
   
 class TransformerBlock(nn.Module):
 
-    def __init__(self, emb, heads, mask, ff_hidden=4, dropout=0.0, wide=True, encoder_hidden_states = None):
+    def __init__(self, emb, heads, mask, ff_hidden=4, dropout=0.0, wide=True):
         super().__init__()
 
         self.attention = SelfAttentionWide(emb, heads=heads, mask=mask) if wide \
@@ -109,7 +109,7 @@ class TransformerBlock(nn.Module):
     
 class TransformerBlockRecurrent(nn.Module):
 
-    def __init__(self, emb, heads, mask, ff_hidden=4, dropout=0.0, wide=True, encoder_hidden_states = None):
+    def __init__(self, emb, heads, mask, ff_hidden_mult=4, dropout=0.0, wide=True, encoder_hidden_states = None):
         super().__init__()
 
         self.attention = SelfAttentionWide(emb, heads=heads, mask=mask) if wide \
@@ -120,9 +120,9 @@ class TransformerBlockRecurrent(nn.Module):
         self.norm2 = nn.LayerNorm(emb)
 
         self.ff = nn.Sequential(
-            nn.Linear(emb, ff_hidden * emb),
+            nn.Linear(emb, ff_hidden_mult * emb),
             nn.ReLU(),
-            nn.Linear(ff_hidden * emb, emb)
+            nn.Linear(ff_hidden_mult * emb, emb)
         )
         self.recurrent = nn.GRU(emb, emb, batch_first=True)
 
@@ -187,15 +187,15 @@ class IBlock(nn.Module):
                 nn.Linear(csize, 2 * csize), nn.ReLU(),
                 nn.Linear(2 * csize, emb)
             )
-            self.to_cond.to(device) 
-            # self.to_cond = nn.Linear(csize, emb)
+
+        # self.to_cond = nn.Linear(csize, emb)
 
     def forward(self, x, layer_past=None, attention_mask=None, head_mask=None):
 
         b, l, e = x.size()
 
         if self.cond is not None and len(self.cond) > 0 and self.cond[0] is not None:
-            cond = self.to_cond(self.cond[0].to(device))
+            cond = self.to_cond(self.cond[0])
             assert cond.size() == (b, e), f'{cond.size()} versus {b, e}'
 
             self.cond_out[0] = cond
@@ -345,12 +345,13 @@ class GPT2WrapperRecurrent(nn.Module):
         for block in self.iblocks:
             block.clear()
 
-class GPT2Wrapper(nn.Module):
+class GPT2WrapperRegular(nn.Module):
+
     def __init__(self, iblocks=3, gptname='distilgpt2', dropout=0.0, csize=None):
         super().__init__()
 
         self.tokenizer = GPT2Tokenizer.from_pretrained(gptname)
-        model = GPT2LMHeadModel.from_pretrained(gptname, output_hidden_states=True)
+        model = GPT2LMHeadModel.from_pretrained(gptname)
         model.eval()
 
         for param in model.parameters():
@@ -388,19 +389,18 @@ class GPT2Wrapper(nn.Module):
         #         nn.Linear(csize, 2*csize), nn.ReLU(),
         #         nn.Linear(2*csize, emb)
         #     )
+
     def forward(self, x, cond=None):
-        
+
         b = x.size(0)
 
         if cond is not None:
             self.container[0] = cond
 
-        x = x.to(next(self.model.mod[0].parameters()).device)
         x = self.model(x, head_mask=self.head_mask)[0]
-        x = x.to(x.device)
-        return x + self.headbias
         # x =  0.0 * cond.view(b, -1).sum(dim=1) #hack
 
+        return x + self.headbias
 
     def clear(self):
 

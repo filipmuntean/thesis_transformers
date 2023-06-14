@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.distributions as dist
-from transformerModels import basicTransformer, GPT2WrapperRecurrent, GPT2Wrapper, GPT2WrapperSimple
+from transformerModels import basicTransformer, GPT2WrapperRecurrent, GPT2WrapperRegular, GPT2WrapperSimple
 # from ytbe import Transformer
 
 # Saved hyperparameters
@@ -345,7 +345,7 @@ def go(model, optimizer, sch):
             seed = get_seed(data_test)
             seed = seed.cuda()
 
-            sample_sequence(model, seed = seed, verbose=True)
+            sample_sequence(model, seed = seed, verbose=True, max_context=768, length=1000)
             losses = estimate_loss(model)
 
             upto = data_test.size(0) if iter == max_iters - 1 else TEST_SUBSET
@@ -382,7 +382,6 @@ def go(model, optimizer, sch):
 
 # wandb.finish()
 
-
 class Handler(object):
 
     def __init__(self, generator="instances"):
@@ -402,7 +401,7 @@ class Handler(object):
             go(model, optimizer, sch)
         elif generator == "pretrained":
             print("===================PRETRINED TRANSFORMER=====================")
-            model = GPT2Wrapper(iblocks = 3, gptname='distilgpt2')
+            model = GPT2WrapperRegular(iblocks = 3, gptname='distilgpt2')
             model = model.to(device)
             # wandb.watch(model)
             print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters' + "\n")
@@ -430,8 +429,12 @@ class Handler(object):
         else:
             print("Should be max or mean pooling")
             return 1
-        
-
+    
         
 if __name__ == '__main__':
-  fire.Fire(Handler)
+    # check for args
+    import sys
+    if len(sys.argv) > 1:
+        fire.Fire(Handler)
+    else:
+        Handler.run("simple")
