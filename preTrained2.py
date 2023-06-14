@@ -1,7 +1,9 @@
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, modeling_utils
 import os , gzip, torch, pandas as pd, fire, random, gc, wandb, math
 from torch import nn
+import numpy as np 
 from transformerModels import TransformerBlock
+from transformerModels import GPT2WrapperRecurrent, GPT2WrapperSimple
 import torch.nn.functional as F
 from collections.abc import Iterable
 
@@ -295,28 +297,50 @@ def d(tensor=None):
         return 'cuda' if torch.cuda.is_available() else 'cpu'
     return 'cuda' if tensor.is_cuda else 'cpu'
 
-def go():
+def alice(path):
+    """
+    Load text data.
 
-    # if PD_SEED < 0:
-    #     seed = random.randint(0, 1000000)
-    #     print('random seed: ', seed)
-    # else:
-    #     torch.manual_seed(PD_SEED)
-
-    str_train, str_test, str_val = load_data()
+    :param path:
+    :param n_train:
+    :param n_valid:
+    :param n_test:
+    :return:
+    """
+    with gzip.open(path) if path.endswith('.gz') else open(path) as file:
+        s = file.read()
+        tr, vl = int(len(s) * 0.6), int(len(s) * 0.8)
     
-    # create the model
-    model = GPT2Wrapper(iblocks = 3)
+        return str(s[:tr]), str(s[tr:vl]), str(s[vl:])
+    
+def load_data_alice():
+    data = here('mmi349/thesis_transformers/data/alice.txt')
+    data_train, data_val, data_test = alice(data)
+    data_train = torch.from_numpy(np.array([ord(c) for c in data_train]))
+    data_test = torch.from_numpy(np.array([ord(c) for c in data_test]))
+    data_val = torch.from_numpy(np.array([ord(c) for c in data_val]))
+        
+    data_train, data_test = (torch.cat([data_train, data_val], dim=0), data_test) \
+                        if final == True else (data_train, data_val)
+    return data_train, data_test if final == True else (data_train, data_val)
 
+def go_alice():
+    str_train, str_test = load_data_alice()
+    # create the model
+    model = GPT2WrapperRecurrent(iblocks = 3)
+    # model = GPT2WrapperSimple(iblocks = 3)
+    print(str_train)
     if torch.cuda.is_available():
         model.to('cuda')
-        model.model.mod[0].to('cuda')
+        if model.model is not None:
+            if 'mod' in model.model.__dict__:
+                model.model.mod[0].to('cuda')
 
     # tokenize the data
-    data_train, data_val, data_test = \
+    data_train, data_test = \
         torch.tensor(model.tokenizer.encode(str_train)), \
-        torch.tensor(model.tokenizer.encode(str_val)), \
         torch.tensor(model.tokenizer.encode(str_test))
+        # torch.tensor(model.tokenizer.encode(str_val)), \
 
     opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
     # sch = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(i / (arg.lr_warmup / arg.batch_size), 1.0))
@@ -342,7 +366,7 @@ def go():
 
         output = model(source)
 
-        loss = F.cross_entropy(output.transpose(2, 1), target, reduction='mean')
+        loss = F.cross_entropy(output.transpose(1, 2), target, reduction='mean')
 
         loss.backward()
 
@@ -382,7 +406,154 @@ def go():
 
                     # print("Shape of input:", input.shape)
                     # print("Shape of c:", c.shape)
-                    # input = torch.cat([input, c], dim=0)
+                    input = torch.cat([input, c], dim=0)
+
+                outseq = torch.cat(outseq, dim=0)
+                outseq = model.tokenizer.decode(outseq)
+
+                print(outseq)
+        
+        # val
+        if i != 0 and (i % TEST_EVERY == 0 or i == max_iters - 1):
+
+            with torch.no_grad():
+
+                upto = data_test.size(0) if i == max_iters - 1 else TEST_SUBSET
+                data_sub = data_test[:upto]
+
+                bits, tot = 0.0, 0
+                batch = [] # buffer, every time it fills up, we run it through the model
+
+                for current in range(data_sub.size(0)):
+
+                    fr = max(0, current - model.ctx)
+                    to = current + 1
+
+                    context = data_sub[fr:to].to(torch.long)
+                    if context.size(0) < model.ctx + 1:
+                        pad = torch.zeros(size=(model.ctx + 1 - context.size(0),), dtype=torch.long)
+                        context = torch.cat([pad, context], dim=0)
+
+                        assert context.size(0) == model.ctx + 1
+
+                    if torch.cuda.is_available():
+                        context = context.cuda()
+
+                    batch.append(context[None, :])
+
+                    if len(batch) == TEST_BATCH_SIZE or current == data_sub.size(0) - 1:
+
+                        # batch is full, run it through the model
+                        b = len(batch)
+
+                        all = torch.cat(batch, dim=0)
+                        source = all[:, :-1] # input
+                        target = all[:, -1]  # target values
+
+                        output = model(source)
+
+                        lnprobs = output[torch.arange(b, device = d()), -1, target]
+                        log2probs = lnprobs * LOG2E # convert from nats to bits
+
+                        bits += - log2probs.sum()
+                        batch = [] # empty buffer
+
+                bits_per_byte = bits / data_sub.size(0)
+
+                # print validation performance. 0.92 bit per byte is (currently) state of the art.
+                print(f'epoch{i}: {bits_per_byte:.4} bits per byte')
+
+def go():
+
+    # if PD_SEED < 0:
+    #     seed = random.randint(0, 1000000)
+    #     print('random seed: ', seed)
+    # else:
+    #     torch.manual_seed(PD_SEED)
+
+    str_train, str_test, str_val = load_data()
+    
+    # create the model
+    model = GPT2WrapperRecurrent(iblocks = 3)
+    # model = GPT2WrapperSimple(iblocks = 3)
+    
+    if torch.cuda.is_available():
+        model.to('cuda')
+        if model.model is not None:
+            if 'mod' in model.model.__dict__:
+                model.model.mod[0].to('cuda')
+
+    # tokenize the data
+    data_train, data_val, data_test = \
+        torch.tensor(model.tokenizer.encode(str_train)), \
+        torch.tensor(model.tokenizer.encode(str_val)), \
+        torch.tensor(model.tokenizer.encode(str_test))
+
+    opt = torch.optim.Adam(lr=LEARNING_RATE, params=model.parameters())
+    # sch = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(i / (arg.lr_warmup / arg.batch_size), 1.0))
+    # -- linear learning rate warmup
+
+    # training loop
+    # -- note: we don't loop over the data, instead we sample a batch of random subsequences each time.
+    for i in range(max_iters):
+
+        opt.zero_grad()
+
+        # sample a batch of random subsequences
+        starts = torch.randint(size=(BATCH_SIZE, ), low=0, high=data_train.size(0) - model.ctx - 1)
+        seqs_source = [data_train[start  :start+model.ctx  ] for start in starts]
+        seqs_target = [data_train[start+1:start+model.ctx+1] for start in starts]
+
+        source = torch.cat([s[None, :] for s in seqs_source ], dim=0).to(torch.long)
+        target = torch.cat([s[None, :] for s in seqs_target ], dim=0).to(torch.long)
+        # -- target is the same sequence as source, except one character ahead
+
+        if torch.cuda.is_available():
+            source, target = source.to('cuda'), target.to('cuda')
+
+        output = model(source)
+
+        loss = F.cross_entropy(output.transpose(1, 2), target, reduction='mean')
+
+        loss.backward()
+
+        # clip gradients
+        # - If the total gradient vector has a length > 1, we clip it back down to 1.
+        if GRAD_CLIP > 0.0:
+            nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+
+        opt.step()
+        # sch.step()
+
+        model.clear()
+
+        # - validate every {arg.test_every} steps. First we compute the
+        #   compression on the validation (or a subset)
+        #   then we generate some random text to monitor progress
+        if i != 0 and (i % PRINT_EVERY == 0 or i == max_iters - 1):
+
+            with torch.no_grad():
+
+                # generate and print some random text
+                seedfr = random.randint(0, data_test.size(0) - PRINT_SEED_SIZE)
+                input = data_test[seedfr:seedfr + PRINT_SEED_SIZE].to(torch.long)
+
+                if torch.cuda.is_available():
+                    input = input.cuda()
+
+                # print the seed
+                strinput = model.tokenizer.decode(input)
+                print(f'[{strinput}]', end='')
+
+                outseq = []
+                for _ in range(PRINT_SIZE):
+                    output = model(input[None, :])
+                    c = sample(output[0, -1, :], SAMPLING_TEMP)
+                    outseq.append(c[None])
+
+                    # print("Shape of input:", input.shape)
+                    # print("Shape of c:", c.shape)
+                    input = torch.cat([input, c], dim=0)
 
                 outseq = torch.cat(outseq, dim=0)
                 outseq = model.tokenizer.decode(outseq)
@@ -524,6 +695,7 @@ def go_pods():
 
     # create the model
     model = GPT2Wrapper(iblocks=IBLOCKS, csize=len(i2g), gptname=gptname)
+    # model = GPT2WrapperSimple(iblocks=IBLOCKS, csize=len(i2g), gptname=gptname)
 
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
@@ -672,4 +844,4 @@ def go_pods():
 if __name__ == "__main__":
     # fire.Fire(go)
     # go_pods()
-    go()
+    go_alice()

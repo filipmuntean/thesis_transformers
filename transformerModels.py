@@ -296,7 +296,7 @@ class GPT2WrapperRecurrent(nn.Module):
         self.container = [None]
 
         self.iblocks = nn.ModuleList([
-            IBlockRecurrent(emb=emb, heads=8, mask=True, ff_hidden=4, dropout=dropout, wide=False, csize=csize, cond=self.container) for _ in range(iblocks+1)
+            IBlockRecurrent(emb=emb, heads=8, mask=True, ff_hidden_mult= 4, dropout=dropout, wide=False, csize=csize, cond=self.container) for _ in range(iblocks+1)
         ])
 
         nb = len(model.transformer.h)   # number of GPT2 blocks
@@ -423,16 +423,16 @@ class GPT2WrapperSimple(nn.Module):
         self.emb = self.model.config.n_embd
         self.ctx = self.model.config.n_ctx
         
-        self.recurrent = nn.GRU(self.emb, self.emb, num_layers=1, batch_first=True)
+        self.recurrent = nn.GRU(68*self.emb - 1967, self.emb, num_layers=1, batch_first=True)
         self.lm_head = nn.Linear(self.emb, self.model.config.vocab_size, bias=True)
 
     def forward(self, x, cond=None):
         x = self.model(x, cond)[0]
-        # x = x[:, :self.ctx, :]  # Trim to max context length
+        x = x[:, :self.ctx, :]  # Trim to max context length
 
         # # if cond is not None:
         # batch_size, seq_len, _ = x.size()
-        # # cond = cond.unsqueeze(1).expand(-1, seq_len, -1)  # Expand cond tensor to match the sequence length
+        # cond = cond.unsqueeze(1).expand(-1, seq_len, -1)  # Expand cond tensor to match the sequence length
         # x = torch.cat((x, cond), dim=-1)  # Concatenate x and cond along the last dimension
 
         # # Reshape the input tensor for the GRU
