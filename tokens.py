@@ -31,7 +31,7 @@ class Tokens():
     test_reviews_tokens = util.loading.get_review_tensor(padded_reviews_test_x_by_tokens)
     test_sentiments_tokens = util.loading.get_sentiment_tensor(padded_reviews_test_y_by_tokens)
 
-    # Concatenate the test tensors
+    # Concatenatethe test tensors
     test_dataset_by_tokens = util.loading.append_lists(test_reviews_tokens, test_sentiments_tokens)
 
 tokens = Tokens()
