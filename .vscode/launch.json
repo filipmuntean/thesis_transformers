@@ -6,7 +6,7 @@
     "configurations": [
         
         {
-            "name": "Python: Current File",
+            "name": "Python:File",
             "type": "python",
             "request": "launch",
             "program": "/home/mmi349/thesis_transformers/GeneratorNotMoved.py",
