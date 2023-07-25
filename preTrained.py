@@ -31,7 +31,6 @@ learning_rate = 3e-4
 # '1318', 'Technology'
 # '1448', 'Tech News'
 # '1477', 'Natural Sciences'
-# '1468',  Educational Technology
 PD_GENRES = [1315, 1304, 1480, 1318, 1448, 1477, 1468]
 
 PD_TITLE_LENTGH = 100

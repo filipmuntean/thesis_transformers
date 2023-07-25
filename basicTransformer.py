@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from selfAttention import MultiheadSelfAttention
 
+default_val = 42
 NUM_TOKENS = 256
 
 def mask_(matrices, maskval=0.0, mask_diagonal=True):

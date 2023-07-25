@@ -1,5 +1,6 @@
-# Thesis wq
-Project - Transformers from scratch
+# Bsc Thesis @VU Amsterdam
+
+## Project - Transformers from scratch
 
 ## 1. Loading the data
 

@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.distributions as dist
 from transformerModels import basicTransformer, GPT2WrapperRecurrent, GPT2WrapperRegular, GPT2WrapperSimple
-# from ytbe import Transformer
 
 # Saved hyperparameters
 BATCH_SIZE = 224
