@@ -90,7 +90,7 @@ google-auth-oauthlib==0.4.6
 google-auth==2.6.0
 google-pasta==0.2.0
 greenlet==1.1.1
-grpcio==1.43.0
+grpcio==1.53.0
 h5py==3.2.1
 heapdict==1.0.1
 html5lib==1.1
@@ -113,7 +113,7 @@ jdcal==1.4.1
 jedi==0.18.0
 jinja2-time==0.2.0
 jinja2==2.11.3
-joblib==1.1.0
+joblib==1.2.0
 json5==0.9.6
 jsonschema==3.2.0
 jupyter-client==6.1.12

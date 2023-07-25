@@ -1,0 +1,18 @@
+chosen genre  Social Sciences
+---------------------------------------------
+description: 
+blank} @PantherWire:SupportsWirelessBluetooth:Texture1 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:texture1 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:texture2 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:texture3 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:texture4 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:texture5 Default color: {0.1% black, 0.1% green, 0.1% red, 0.1% blue, 0.1% yellow} @PantherWire:SupportsWirelessBluetooth:color_0 Name Type
+
+Color Cylinder V3 Product Comparison Made Using VS6's Porsion Controller For Minecraft - 1220/1895-1205 Minimum Output Power 2x Wires - 16x Wires @PantherWire:SupportsWirelessBluetooth:pixelandcolor_1.png @PantherWire:SupportsWirelessBluetooth:pixelandcolor_2.png @PantherWire:SupportsWirelessBluetooth:pixelandcolor_3.png Color models are minimum size.
+
+Color models not shown.
+
+@PantherWire:SupportsWirelessBluetooth:witness_3.png witness_4 and witness_5 are preset body designs.
+
+@PantherWire:SupportsWirelessBluetooth:witness_dart_4 and witness_dart_5 are darts crafted from PSD.
+
+@PantherWire:SupportsWirelessBluetooth:witness_fur_4 and witness_fur_5 are fur/softcase.
+
+@PantherWire:SupportsWirelessBluetooth:witness_the_combo_5 and witness_the_combo_6 are booms.
+
+@PantherWire:SupportsWirelessBluetooth:witness_blue_5 and witness_blue

@@ -6,7 +6,7 @@ import random, tqdm, sys, math
 from argparse import ArgumentParser
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.tensorboard import SummaryWriter
-from basicTransformer import basicTransformer
+from thesis_transformers.transformers import basicTransformer
 from main import Main
 import torch, os, time, math, tqdm, random, sys, gzip
 import numpy as np
