@@ -1,7 +1,8 @@
 # Bsc Thesis @VU Amsterdam
 
 <!-- <img src="https://github-readme-stats.vercel.app/api/top-langs?username=filipmuntean&show_icons=true&locale=en&layout=compact&theme=chartreuse-dark" alt="ovi" /> -->
-![Static Badge](https://img.shields.io/badge/PyTorch-1.1-brightgreen)
+![Static Badge](https://img.shields.io/badge/PyTorch-1.1-brightgreen?style=plastic)  ![Static Badge](https://img.shields.io/badge/WanB-0.15.7-red?style=plastic) ![Static Badge](https://img.shields.io/badge/fire-0.5-yellow?style=plastic)
+
 
 ## Integrating a Recurrent Connection in a Pre-trained Transformer Model
 
