@@ -4,7 +4,7 @@
 ![Static Badge](https://img.shields.io/badge/PyTorch-2.0.1-orange?style=plastic&link=https%3A%2F%2Fpytorch.org%2F)
 ![Static Badge](https://img.shields.io/badge/WandB-0.15.7-yellow?style=plastic&link=https%3A%2F%2Fpypi.org%2Fproject%2Fwandb%2F)
  ![Static Badge](https://img.shields.io/badge/fire-0.5-red?style=plastic&link=https%3A%2F%2Fpypi.org%2Fproject%2Ffire%2F)
-
+f
 
 
 
