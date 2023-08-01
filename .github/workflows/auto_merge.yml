@@ -15,5 +15,5 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           strategy: "merge-commit" # Change this to "rebase" or "squash" as needed
-          branch-suffix: "-dependabot" # Optional: Add a suffix to the branch name to prevent conflicts
+          branch-suffix: "-dependabot" # Optional: Add a suffix to the branch name to prevent conflict
 
