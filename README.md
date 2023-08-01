@@ -1,7 +1,11 @@
 # Bsc Thesis @VU Amsterdam
 
 <!-- <img src="https://github-readme-stats.vercel.app/api/top-langs?username=filipmuntean&show_icons=true&locale=en&layout=compact&theme=chartreuse-dark" alt="ovi" /> -->
-![Static Badge](https://img.shields.io/badge/PyTorch-1.1-brightgreen?style=plastic)  ![Static Badge](https://img.shields.io/badge/WanB-0.15.7-red?style=plastic) ![Static Badge](https://img.shields.io/badge/fire-0.5-yellow?style=plastic)
+![Static Badge](https://img.shields.io/badge/PyTorch-2.0.1-orange?style=plastic&link=https%3A%2F%2Fpytorch.org%2F)
+![Static Badge](https://img.shields.io/badge/WandB-0.15.7-yellow?style=plastic&link=https%3A%2F%2Fpypi.org%2Fproject%2Fwandb%2F)
+ ![Static Badge](https://img.shields.io/badge/fire-0.5-red?style=plastic&link=https%3A%2F%2Fpypi.org%2Fproject%2Ffire%2F)
+
+
 
 
 ## Integrating a Recurrent Connection in a Pre-trained Transformer Model
@@ -53,5 +57,3 @@ Finally, the results and metrics (loss, gradient clipping norm, and perplexity) 
 ## Conclusion
 
 This project aims to understand the impact of a recurrent connection in a pre-trained transformer model. By comparing the performance, training time, and architectural constraints, we can determine whether the addition of recurrent connections is beneficial in the context of attention-based models.
-
-
