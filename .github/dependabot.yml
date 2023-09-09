@@ -7,8 +7,14 @@ updates:
       interval: "daily"
     allow:
       - dependency-name: "torch"
+<<<<<<< HEAD
     pull-request-branch-name:
       separator: "-"
     open-pull-requests-limit: 10   # maximum number of open pull requests at a time
       create:
         - security
+=======
+open-pull-requests-limit: 20   # maximum number of open pull requests at a time
+    create:
+      - security
+>>>>>>> 63b3aed5b82195f34b5f34dd18f0e578d3213ca3
