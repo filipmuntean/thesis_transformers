@@ -5,6 +5,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-open-pull-requests-limit: 10   # maximum number of open pull requests at a time
+    allow:
+      - dependency-name: "torch"
+open-pull-requests-limit: 20   # maximum number of open pull requests at a time
     create:
       - security
