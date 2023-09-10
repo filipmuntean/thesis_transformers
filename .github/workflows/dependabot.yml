@@ -1,28 +1,18 @@
-name: Auto-Merge Dependabot PRs
-
+name: Dependabot Auto Merge
 on:
   pull_request:
     types:
       - opened
+      - reopened
       - synchronize
-
+    branches:
+      - master
 jobs:
-  auto_merge:
+  auto-merge:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check if PR is from Dependabot
-        id: dependabot_check
-        run: echo "Is Dependabot PR"
-
-      - name: Merge PR
-        if: steps.dependabot_check.outputs['Is Dependabot PR'] == 'true'
-        run: |
-          GITHUB_TOKEN="${{ secrets.SECRET_GITHUB_TOKEN }}"
-          PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
-
-          echo "Merging PR $PR_NUMBER..."
-          curl -X PUT -H "Authorization: token $GITHUB_TOKEN" \
-            -d '{"commit_title": "Auto-merge Dependabot PR"}' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/merge"
-
+      - uses: actions/checkout@v2
+      - uses: dependabot/auto-merge@v1
+        with:
+          token: ${{ secrets.SECRETS_GITHUB_TOKEN }}
+          dependency-name: '*'
