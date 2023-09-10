@@ -1,20 +1,28 @@
-version: 2
-updates:
-  # Define your update schedule here (e.g., daily, weekly, etc.).
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    allow:
-      - dependency-name: "torch"
-<<<<<<< HEAD
-    pull-request-branch-name:
-      separator: "-"
-    open-pull-requests-limit: 10   # maximum number of open pull requests at a time
-      create:
-        - security
-=======
-open-pull-requests-limit: 20   # maximum number of open pull requests at a time
-    create:
-      - security
->>>>>>> 63b3aed5b82195f34b5f34dd18f0e578d3213ca3
+name: Auto-Merge Dependabot PRs
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  auto_merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if PR is from Dependabot
+        id: dependabot_check
+        run: echo "Is Dependabot PR"
+
+      - name: Merge PR
+        if: steps.dependabot_check.outputs['Is Dependabot PR'] == 'true'
+        run: |
+          GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
+
+          echo "Merging PR $PR_NUMBER..."
+          curl -X PUT -H "Authorization: token $GITHUB_TOKEN" \
+            -d '{"commit_title": "Auto-merge Dependabot PR"}' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/merge"
+
