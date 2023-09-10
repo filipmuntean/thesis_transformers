@@ -18,7 +18,7 @@ jobs:
       - name: Merge PR
         if: steps.dependabot_check.outputs['Is Dependabot PR'] == 'true'
         run: |
-          GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN="${{ secrets.SECRET_GITHUB_TOKEN }}"
           PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
 
           echo "Merging PR $PR_NUMBER..."
