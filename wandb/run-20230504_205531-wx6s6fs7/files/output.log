@@ -1,6 +1,0 @@
-Using mean pooling
-Should be instances or tokens classifier
-[31m[1mERROR: [39m[22mThe function received no value for the required argument: pool_type
-Usage: Classifier.py --classifier=instances run CLASSIFIER POOL_TYPE
-For detailed information on this command, run:
-  Classifier.py --classifier=instances run --help

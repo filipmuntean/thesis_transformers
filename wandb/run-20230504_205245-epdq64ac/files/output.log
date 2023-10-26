@@ -1,8 +1,0 @@
-Using mean pooling
-Should be instances or tokens classifier
-[31m[1mERROR: [39m[22mCould not consume arg: --classifier=instances
-Usage: Classifier.py --classifier=instances - <command|value>
-  available commands:    handler
-  available values:      classifier | pool_type
-For detailed information on this command, run:
-  Classifier.py --classifier=instances - --help

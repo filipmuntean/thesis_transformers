@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/filip/thesis/Classifier.py", line 115, in <module>
-    criterion, optimizer = optimization()
-  File "/Users/filip/thesis/Classifier.py", line 113, in optimization
-    return nn.CrossEntropyLoss(), optim.Adam(CallClassifier.parameters(), lr=0.001)
-AttributeError: 'function' object has no attribute 'parameters'

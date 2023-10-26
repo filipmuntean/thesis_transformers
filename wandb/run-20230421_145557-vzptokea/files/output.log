@@ -1,4 +1,0 @@
-[31m[1mERROR: [39m[22mThe function received no value for the required argument: classifier
-Usage: Classifier.py CLASSIFIER
-For detailed information on this command, run:
-  Classifier.py --help

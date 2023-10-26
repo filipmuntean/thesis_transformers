@@ -1,1 +1,0 @@
-{"Accuracy Instance Classifier, max pooling": 90.75, "Loss Instance Classifier: max pooling": 0.2394722306370735, "_timestamp": 1683132737.946532, "_runtime": 587.9078531265259, "_step": 3, "Test accuracy Instance Classifier, max pooling": 87.1218152866242, "Test loss Instance Classifier, max pooling": 0.3408104816249981, "_wandb": {"runtime": 587}}

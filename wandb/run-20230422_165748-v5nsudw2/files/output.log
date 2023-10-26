@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/filip/thesis/Classifier.py", line 81, in <module>
-    class Classifier(nn.Module):
-  File "/Users/filip/thesis/Classifier.py", line 82, in Classifier
-    def __init__(self, vocab_size, output_dim = 4, embed_dim = 128, pool_type = pooling):
-NameError: name 'pooling' is not defined
